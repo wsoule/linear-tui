@@ -1,5 +1,7 @@
 import {
+  type Attachment,
   type Issue,
+  type IssueRelation,
   type User,
   type WorkflowState,
   type Team,
@@ -27,12 +29,22 @@ export type IssueCommentRow = {
   user: User | undefined
 }
 
+export type IssueRelationRow = {
+  relation: IssueRelation
+  issue: Issue | undefined
+  relatedIssue: Issue | undefined
+  direction: "outbound" | "inbound"
+}
+
 export type IssueDetailData = {
   issue: Issue
   state: WorkflowState | undefined
   assignee: User | undefined
   team: Team | undefined
   comments: IssueCommentRow[]
+  children: IssueRow[]
+  relations: IssueRelationRow[]
+  attachments: Attachment[]
 }
 
 type CreateIssueInput = {
@@ -153,19 +165,46 @@ export async function searchIssuesQuery(query: string): Promise<IssueRow[]> {
 
 async function loadIssueDetail(id: string): Promise<IssueDetailData> {
   const issue = await linear.issue(id)
-  const [state, assignee, team, comments] = await Promise.all([
+  const [state, assignee, team, comments, children, attachments, relations, inverseRelations] = await Promise.all([
     issue.state,
     issue.assignee,
     issue.team,
     issue.comments({ first: 50 }),
+    issue.children({ first: 50 }),
+    issue.attachments({ first: 50 }),
+    issue.relations({ first: 50 }),
+    issue.inverseRelations({ first: 50 }),
   ])
-  const enrichedComments = await Promise.all(
-    comments.nodes.map(async (c) => ({
-      comment: c,
-      user: await c.user,
-    })),
-  )
-  return { issue, state, assignee, team, comments: enrichedComments }
+  const [enrichedComments, enrichedChildren, enrichedRelations] = await Promise.all([
+    Promise.all(
+      comments.nodes.map(async (c) => ({
+        comment: c,
+        user: await c.user,
+      })),
+    ),
+    enrich(children.nodes),
+    Promise.all(
+      [
+        ...relations.nodes.map((relation) => ({ relation, direction: "outbound" as const })),
+        ...inverseRelations.nodes.map((relation) => ({ relation, direction: "inbound" as const })),
+      ].map(async ({ relation, direction }) => ({
+        relation,
+        direction,
+        issue: await relation.issue,
+        relatedIssue: await relation.relatedIssue,
+      })),
+    ),
+  ])
+  return {
+    issue,
+    state,
+    assignee,
+    team,
+    comments: enrichedComments,
+    children: enrichedChildren,
+    relations: enrichedRelations,
+    attachments: attachments.nodes,
+  }
 }
 
 export async function getIssueDetail(id: string): Promise<IssueDetailData> {
@@ -276,6 +315,9 @@ export function addIssueRowToCaches(row: IssueRow): void {
   rememberIssueDetail({
     ...row,
     comments: [],
+    children: [],
+    relations: [],
+    attachments: [],
   })
 }
 

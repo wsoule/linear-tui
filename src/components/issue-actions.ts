@@ -24,8 +24,8 @@ export function targetFromDetail(detail: IssueDetailData): IssueTarget {
   }
 }
 
-async function openUrl(url: string): Promise<void> {
-  if (!url) throw new Error("issue URL is not available yet")
+export async function openUrl(url: string): Promise<void> {
+  if (!url) throw new Error("URL is not available yet")
   const command =
     process.platform === "darwin"
       ? ["open", url]

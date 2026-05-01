@@ -39,6 +39,8 @@ const SECTIONS: { heading: string; rows: [string, string][] }[] = [
       ["c", "comment"],
       ["o", "open in browser"],
       ["y", "copy issue id"],
+      ["tab", "select attachment"],
+      ["enter", "open attachment"],
       ["j / k", "scroll line"],
       ["ctrl+d / u", "scroll half-page"],
       ["space / pgdn", "scroll viewport"],

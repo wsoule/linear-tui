@@ -280,6 +280,9 @@ function NewIssueModal() {
       assignee: undefined,
       team,
       comments: [],
+      children: [],
+      relations: [],
+      attachments: [],
     })
     setSelectedIssueId(id)
     setModal(null)
