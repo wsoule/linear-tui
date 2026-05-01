@@ -23,7 +23,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const [attachmentIndex, setAttachmentIndex] = useState(0)
   const { handleIssueKey } = useIssueActions()
-  const { addToast } = useStore()
+  const { addToast, keybindings } = useStore()
 
   useEffect(() => {
     setAttachmentIndex(0)
@@ -124,33 +124,33 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
       <text fg={theme.fgMuted}>───── description ─────</text>
       <text fg={theme.fg}>{issue.description ?? "(no description)"}</text>
       <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}>───── sub-issues ({children.length}) ─────</text>
-      {children.length === 0 ? (
-        <text fg={theme.fgDim}>(none)</text>
-      ) : (
-        children.map((row) => <SubIssueRow key={row.issue.id} row={row} />)
-      )}
-      <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}>───── relations ({relations.length}) ─────</text>
-      {relations.length === 0 ? (
-        <text fg={theme.fgDim}>(none)</text>
-      ) : (
-        relations.map((row) => <RelationRow key={row.relation.id} row={row} currentIssue={issue} />)
-      )}
-      <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}>───── attachments ({attachments.length}) ─────</text>
-      {attachments.length === 0 ? (
-        <text fg={theme.fgDim}>(none)</text>
-      ) : (
-        attachments.map((attachment, i) => (
-          <AttachmentRow
-            key={attachment.id}
-            attachment={attachment}
-            selected={i === attachmentIndex}
-          />
-        ))
-      )}
-      <text fg={theme.fgMuted}> </text>
+      {children.length > 0 ? (
+        <>
+          <text fg={theme.fgMuted}>───── sub-issues ({children.length}) ─────</text>
+          {children.map((row) => <SubIssueRow key={row.issue.id} row={row} />)}
+          <text fg={theme.fgMuted}> </text>
+        </>
+      ) : null}
+      {relations.length > 0 ? (
+        <>
+          <text fg={theme.fgMuted}>───── relations ({relations.length}) ─────</text>
+          {relations.map((row) => <RelationRow key={row.relation.id} row={row} currentIssue={issue} />)}
+          <text fg={theme.fgMuted}> </text>
+        </>
+      ) : null}
+      {attachments.length > 0 ? (
+        <>
+          <text fg={theme.fgMuted}>───── attachments ({attachments.length}) ─────</text>
+          {attachments.map((attachment, i) => (
+            <AttachmentRow
+              key={attachment.id}
+              attachment={attachment}
+              selected={i === attachmentIndex}
+            />
+          ))}
+          <text fg={theme.fgMuted}> </text>
+        </>
+      ) : null}
       <text fg={theme.fgMuted}>───── comments ({comments.length}) ─────</text>
       {comments.length === 0 ? (
         <text fg={theme.fgDim}>(none)</text>
@@ -166,7 +166,9 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
         ))
       )}
       <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}>s status · a assign · c comment · o open · y copy · tab attachment · enter open attachment · esc back</text>
+      <text fg={theme.fgMuted}>
+        {`${keybindings.issueStatus} status · ${keybindings.issueAssign} assign · ${keybindings.issueComment} comment · ${keybindings.issueNewSubIssue} sub-issue · ${keybindings.issueCopyBranch} branch · ${keybindings.issueCopyId} id · esc back`}
+      </text>
     </scrollbox>
   )
 }

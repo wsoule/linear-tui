@@ -6,6 +6,7 @@ import { StatusBadge } from "./status-badge"
 import { useStore } from "../state/store"
 import { targetFromRow, useIssueActions } from "./issue-actions"
 import { groupByLabel, type IssueGroupBy } from "../viewing/preferences"
+import { matchesKeyBinding } from "../keybindings"
 import { theme } from "../theme"
 
 type Props = {
@@ -74,7 +75,7 @@ function issueItems(rows: IssueRow[], groupBy: IssueGroupBy): IssueListItem[] {
 }
 
 export function IssueList({ title, subtitle, rows, error, active, emptyText }: Props) {
-  const { setSelectedIssueId, setModal, viewingPreferences } = useStore()
+  const { setSelectedIssueId, setModal, viewingPreferences, keybindings } = useStore()
   const { handleIssueKey } = useIssueActions()
   const filteredRows = useMemo(
     () => rows ? filterRows(rows, viewingPreferences.filter) : null,
@@ -87,11 +88,11 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
 
   useKeyboard((key) => {
     if (!active) return
-    if (key.name === "f") {
+    if (matchesKeyBinding(key, keybindings.viewFilter)) {
       setModal({ type: "filter" })
       return
     }
-    if (key.ctrl && key.name === "g") {
+    if (matchesKeyBinding(key, keybindings.viewGroup)) {
       setModal({ type: "group" })
     }
   })

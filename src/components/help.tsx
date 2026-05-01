@@ -1,76 +1,81 @@
 import { theme } from "../theme"
-
-const SECTIONS: { heading: string; rows: [string, string][] }[] = [
-  {
-    heading: "views",
-    rows: [
-      ["m", "my issues"],
-      ["i", "inbox"],
-      ["p", "projects"],
-      ["c", "cycles"],
-      ["/", "search"],
-    ],
-  },
-  {
-    heading: "navigation",
-    rows: [
-      ["j / ↓", "down"],
-      ["k / ↑", "up"],
-      ["g", "top"],
-      ["G", "bottom"],
-      ["enter / l", "open"],
-      ["esc / h", "back"],
-    ],
-  },
-  {
-    heading: "issue rows",
-    rows: [
-      ["s", "change status"],
-      ["a", "reassign"],
-      ["o", "open in browser"],
-      ["y", "copy issue id"],
-      ["b", "copy branch"],
-      ["B", "switch branch"],
-      ["f", "filter issues"],
-      ["ctrl+g", "group issues"],
-    ],
-  },
-  {
-    heading: "issue detail",
-    rows: [
-      ["s", "change status"],
-      ["a", "reassign"],
-      ["c", "comment"],
-      ["o", "open in browser"],
-      ["y", "copy issue id"],
-      ["b", "copy branch"],
-      ["B", "switch branch"],
-      ["tab", "select attachment"],
-      ["enter", "open attachment"],
-      ["j / k", "scroll line"],
-      ["ctrl+d / u", "scroll half-page"],
-      ["space / pgdn", "scroll viewport"],
-      ["g / G", "top / bottom"],
-    ],
-  },
-  {
-    heading: "search",
-    rows: [
-      ["tab", "toggle input ↔ results"],
-      ["esc", "leave search"],
-    ],
-  },
-  {
-    heading: "global",
-    rows: [
-      ["n", "new issue"],
-      ["?", "toggle help"],
-      ["q", "quit"],
-    ],
-  },
-]
+import { useStore } from "../state/store"
 
 export function Help() {
+  const { keybindings } = useStore()
+  const sections: { heading: string; rows: [string, string][] }[] = [
+    {
+      heading: "views",
+      rows: [
+        ["m", "my issues"],
+        ["i", "inbox"],
+        ["p", "projects"],
+        ["c", "cycles"],
+        ["/", "search"],
+      ],
+    },
+    {
+      heading: "navigation",
+      rows: [
+        ["j / ↓", "down"],
+        ["k / ↑", "up"],
+        ["g", "top"],
+        ["G", "bottom"],
+        ["enter / l", "open"],
+        ["esc / h", "back"],
+      ],
+    },
+    {
+      heading: "issue rows",
+      rows: [
+        [keybindings.issueStatus, "change status"],
+        [keybindings.issueAssign, "reassign"],
+        [keybindings.issueNewSubIssue, "new sub-issue"],
+        [keybindings.issueOpen, "open in browser"],
+        [keybindings.issueCopyBranch, "copy branch"],
+        [keybindings.issueCopyId, "copy issue id"],
+        [keybindings.issueSwitchBranch, "switch branch"],
+        [keybindings.viewFilter, "filter issues"],
+        [keybindings.viewGroup, "group issues"],
+      ],
+    },
+    {
+      heading: "issue detail",
+      rows: [
+        [keybindings.issueStatus, "change status"],
+        [keybindings.issueAssign, "reassign"],
+        [keybindings.issueComment, "comment"],
+        [keybindings.issueNewSubIssue, "new sub-issue"],
+        [keybindings.issueOpen, "open in browser"],
+        [keybindings.issueCopyBranch, "copy branch"],
+        [keybindings.issueCopyId, "copy issue id"],
+        [keybindings.issueSwitchBranch, "switch branch"],
+        ["tab", "select attachment"],
+        ["enter", "open attachment"],
+        ["j / k", "scroll line"],
+        ["ctrl+d / u", "scroll half-page"],
+        ["space / pgdn", "scroll viewport"],
+        ["g / G", "top / bottom"],
+      ],
+    },
+    {
+      heading: "search",
+      rows: [
+        ["tab", "toggle input ↔ results"],
+        ["esc", "leave search"],
+      ],
+    },
+    {
+      heading: "global",
+      rows: [
+        [keybindings.globalNewIssue, "new issue"],
+        [keybindings.globalSettings, "settings"],
+        [keybindings.globalHelp, "toggle help"],
+        ["q", "quit"],
+      ],
+    },
+  ]
+
   return (
     <box
       style={{
@@ -85,7 +90,7 @@ export function Help() {
       }}
     >
       <text fg={theme.accent} attributes={1}>keys</text>
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <box key={section.heading} style={{ flexDirection: "column", marginTop: 1 }}>
           <text fg={theme.fgDim}>{section.heading}</text>
           {section.rows.map(([k, label]) => (

@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
 import {
+  loadKeybindings,
+  saveKeybindings,
+  type Keybindings,
+  type KeyCommand,
+} from "../keybindings"
+import {
   loadViewingPreferences,
   saveViewingPreferences,
   type ViewingPreferences,
@@ -19,9 +25,10 @@ export type Modal =
   | { type: "status"; target: IssueTarget }
   | { type: "assignee"; target: IssueTarget }
   | { type: "comment"; target: IssueTarget }
-  | { type: "new-issue" }
+  | { type: "new-issue"; parent?: IssueTarget }
   | { type: "filter" }
   | { type: "group" }
+  | { type: "settings" }
 
 export type Toast = {
   id: number
@@ -44,6 +51,8 @@ type Store = {
   setViewingPreferences: (
     next: ViewingPreferences | ((current: ViewingPreferences) => ViewingPreferences)
   ) => void
+  keybindings: Keybindings
+  setKeybinding: (command: KeyCommand, binding: string) => void
   toast: Toast | null
   addToast: (message: string, tone?: Toast["tone"]) => void
 }
@@ -58,6 +67,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [modal, setModal] = useState<Modal | null>(null)
   const [viewingPreferences, setViewingPreferencesState] =
     useState<ViewingPreferences>(loadViewingPreferences)
+  const [keybindings, setKeybindings] = useState<Keybindings>(loadKeybindings)
   const [toast, setToast] = useState<Toast | null>(null)
 
   const setViewWrapped = (v: View) => {
@@ -83,6 +93,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const setKeybinding = (command: KeyCommand, binding: string) => {
+    setKeybindings((current) => {
+      const next = {
+        ...current,
+        [command]: binding.trim(),
+      }
+      saveKeybindings(next)
+      return next
+    })
+  }
+
   return (
     <Ctx.Provider
       value={{
@@ -98,6 +119,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setModal,
         viewingPreferences,
         setViewingPreferences,
+        keybindings,
+        setKeybinding,
         toast,
         addToast,
       }}

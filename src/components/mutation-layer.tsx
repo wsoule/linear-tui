@@ -1,8 +1,9 @@
-import { useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { Issue, Team, User, WorkflowState } from "@linear/sdk"
 import type { TextareaRenderable } from "@opentui/core"
 import { useStore, type IssueTarget, type Toast } from "../state/store"
+import { KEY_COMMANDS, commandLabel, type KeyCommand } from "../keybindings"
 import {
   appendCommentCache,
   createIssue,
@@ -245,6 +246,7 @@ function optimisticIssue(
   title: string,
   description: string,
   priority: number,
+  parentId?: string,
 ): Issue {
   return {
     id,
@@ -255,28 +257,43 @@ function optimisticIssue(
     priorityLabel: priorityLabel(priority),
     url: "",
     teamId: team.id,
+    parentId,
   } as Issue
 }
 
-function NewIssueModal() {
+function NewIssueModal({ parent }: { parent?: IssueTarget }) {
   useModalEscape()
   const { setModal, setSelectedIssueId, addToast } = useStore()
   const { data: teams, error } = useCachedQuery<Team[]>(
     VIEWER_TEAMS_KEY,
     getViewerTeams,
   )
-  const [step, setStep] = useState<"team" | "title" | "description" | "priority">("team")
+  const [step, setStep] = useState<"team" | "title" | "description" | "priority">(parent ? "title" : "team")
   const [team, setTeam] = useState<Team | null>(null)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState(0)
   const descriptionRef = useRef<TextareaRenderable | null>(null)
 
+  useEffect(() => {
+    if (!parent || team || !teams) return
+    const parentTeam = teams.find((t) => t.id === parent.teamId)
+    if (parentTeam) setTeam(parentTeam)
+    else setStep("team")
+  }, [parent, team, teams])
+
   const submit = (selectedPriority: number) => {
     if (!team || !title.trim()) return
     const id = crypto.randomUUID()
     rememberIssueDetail({
-      issue: optimisticIssue(id, team, title.trim(), description, selectedPriority),
+      issue: optimisticIssue(
+        id,
+        team,
+        title.trim(),
+        description,
+        selectedPriority,
+        parent?.issueId,
+      ),
       state: undefined,
       assignee: undefined,
       team,
@@ -294,6 +311,7 @@ function NewIssueModal() {
       title: title.trim(),
       description: description || undefined,
       priority: selectedPriority,
+      parentId: parent?.issueId,
     })
       .then((row) => {
         if (row.issue.id !== id) invalidate(issueDetailKey(id))
@@ -323,9 +341,11 @@ function NewIssueModal() {
         zIndex: 50,
       }}
     >
-      <text fg={theme.accent} attributes={1}>New Issue</text>
+      <text fg={theme.accent} attributes={1}>{parent ? "New Sub-issue" : "New Issue"}</text>
       <text fg={theme.fgMuted}>
-        {step === "team"
+        {parent
+          ? `${parent.identifier}  ${step === "title" ? "enter title" : step === "description" ? "description · ctrl+enter next" : step === "priority" ? "choose priority" : "choose team"}`
+          : step === "team"
           ? "choose team"
           : step === "title"
           ? "enter title"
@@ -497,6 +517,73 @@ function GroupModal() {
   )
 }
 
+function SettingsModal() {
+  useModalEscape()
+  const { keybindings, setKeybinding, setModal, addToast } = useStore()
+  const [command, setCommand] = useState<KeyCommand>("issueCopyBranch")
+  const [step, setStep] = useState<"command" | "binding">("command")
+  const [binding, setBinding] = useState(keybindings.issueCopyBranch)
+
+  const chooseCommand = (nextCommand: KeyCommand) => {
+    setCommand(nextCommand)
+    setBinding(keybindings[nextCommand])
+    setStep("binding")
+  }
+
+  const submit = () => {
+    const nextBinding = binding.trim()
+    if (!nextBinding) return
+    setKeybinding(command, nextBinding)
+    setModal(null)
+    addToast(`${commandLabel(command)} -> ${nextBinding}`, "success")
+  }
+
+  return (
+    <ModalFrame
+      title="Settings"
+      subtitle={step === "command" ? "choose keybinding" : `${commandLabel(command)} binding`}
+      wide
+    >
+      {step === "command" ? (
+        <select
+          focused
+          width={66}
+          height={Math.min(13, KEY_COMMANDS.length)}
+          showDescription={false}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={KEY_COMMANDS.map((item) => ({
+            name: `${commandLabel(item.key).padEnd(22)} ${keybindings[item.key]}`,
+            description: "",
+            value: item.key,
+          }))}
+          onSelect={(_, option) => chooseCommand((option?.value as KeyCommand | undefined) ?? "issueCopyBranch")}
+        />
+      ) : (
+        <box
+          style={{
+            flexDirection: "row",
+            borderStyle: "single",
+            borderColor: theme.borderActive,
+            paddingLeft: 1,
+            paddingRight: 1,
+          }}
+        >
+          <text fg={theme.fgMuted}>key </text>
+          <input
+            focused
+            value={binding}
+            onInput={setBinding}
+            onSubmit={submit}
+            placeholder="examples: y, B, ctrl+g"
+          />
+        </box>
+      )}
+    </ModalFrame>
+  )
+}
+
 export function MutationLayer() {
   const { modal } = useStore()
   if (!modal) return null
@@ -505,7 +592,8 @@ export function MutationLayer() {
   if (modal.type === "comment") return <CommentModal target={modal.target} />
   if (modal.type === "filter") return <FilterModal />
   if (modal.type === "group") return <GroupModal />
-  return <NewIssueModal />
+  if (modal.type === "settings") return <SettingsModal />
+  return <NewIssueModal parent={modal.parent} />
 }
 
 export function ToastView({ toast }: { toast: Toast }) {

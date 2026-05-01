@@ -53,6 +53,7 @@ type CreateIssueInput = {
   title?: string
   description?: string
   priority?: number
+  parentId?: string
 }
 
 export async function enrichIssue(issue: Issue): Promise<IssueRow> {

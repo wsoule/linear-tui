@@ -10,6 +10,7 @@ import { IssueDetail } from "./views/issue-detail"
 import { MutationLayer, ToastView } from "./components/mutation-layer"
 import { StatusLine } from "./components/status-line"
 import { StoreProvider, useStore } from "./state/store"
+import { matchesKeyBinding } from "./keybindings"
 import { theme } from "./theme"
 
 function Shell() {
@@ -25,18 +26,36 @@ function Shell() {
     setHelpVisible,
     modal,
     setModal,
+    keybindings,
     toast,
   } = useStore()
 
   const inSearchView = view === "search" && !selectedIssueId
+  const inIssueListView =
+    !selectedIssueId &&
+    (view === "my-issues" ||
+      view === "inbox" ||
+      view === "cycles" ||
+      (view === "projects" && selectedProjectId !== null) ||
+      view === "search")
 
   useKeyboard((key) => {
     if (helpVisible) {
-      if (key.name === "escape" || key.name === "?") setHelpVisible(false)
+      if (key.name === "escape" || matchesKeyBinding(key, keybindings.globalHelp)) setHelpVisible(false)
       return
     }
 
     if (modal) return
+
+    if (matchesKeyBinding(key, keybindings.globalHelp)) {
+      setHelpVisible(true)
+      return
+    }
+
+    if (matchesKeyBinding(key, keybindings.globalSettings)) {
+      setModal({ type: "settings" })
+      return
+    }
 
     if (key.name === "escape") {
       if (selectedIssueId) setSelectedIssueId(null)
@@ -54,13 +73,15 @@ function Shell() {
 
     switch (key.name) {
       case "q": renderer.destroy(); break
-      case "?": setHelpVisible(true); break
-      case "n": setModal({ type: "new-issue" }); break
       case "m": setView("my-issues"); break
       case "i": setView("inbox"); break
       case "p": setView("projects"); break
       case "c": setView("cycles"); break
       case "/": setView("search"); break
+    }
+
+    if (!inIssueListView && matchesKeyBinding(key, keybindings.globalNewIssue)) {
+      setModal({ type: "new-issue" })
     }
   })
 

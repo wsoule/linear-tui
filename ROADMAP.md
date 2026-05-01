@@ -42,7 +42,7 @@ This is the part that earns the TUI its keep over the web app.
 ## Phase 5 — stretch (IN PROGRESS)
 
 - **Triage queue** for teams the viewer triages.
-- **Sub-issues** — DONE in issue detail; remaining: collapsible tree in issue lists.
+- **Sub-issues** — DONE in issue detail and `n` creates a sub-issue from an issue row/detail; remaining: collapsible tree in issue lists.
 - **Linked issues & relations** — DONE in issue detail with inbound/outbound direction; remaining: richer relation graph navigation.
 - **Attachments** — DONE in issue detail with `tab` selection and `enter` to open URL.
 - **Offline queue** — buffer mutations when the network is down, replay on reconnect.
@@ -52,7 +52,8 @@ This is the part that earns the TUI its keep over the web app.
 
  - **Filters** - DONE: `f` opens a saved global issue filter, persisted to `~/.config/linear-tui/viewing.json`.
  - **Grouping** - DONE: `ctrl+g` opens saved grouping by status, assignee, priority, or team.
- - copy branch name to clipboard (pressing b) - DONE. `B` switches/creates the suggested branch.
+ - copy branch name to clipboard - DONE. Defaults to `y`; `B` switches/creates the suggested branch.
+ - **Keybinding settings** - DONE: `,` opens settings, keybindings persist to `~/.config/linear-tui/keybindings.json`.
  - this bug: 36rissuesycle
 
 

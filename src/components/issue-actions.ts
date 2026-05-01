@@ -3,6 +3,7 @@ import type { KeyEvent } from "@opentui/core"
 import type { IssueTarget } from "../state/store"
 import { useStore } from "../state/store"
 import type { IssueDetailData, IssueRow } from "../linear/queries"
+import { matchesKeyBinding } from "../keybindings"
 
 function slug(value: string): string {
   return value
@@ -84,7 +85,7 @@ async function switchToBranch(branchName: string): Promise<void> {
 
 export function useIssueActions() {
   const renderer = useRenderer()
-  const { setModal, addToast } = useStore()
+  const { setModal, addToast, keybindings } = useStore()
 
   const copyToClipboard = async (text: string) => {
     const copied = renderer.copyToClipboardOSC52(text)
@@ -129,36 +130,40 @@ export function useIssueActions() {
 
   return {
     handleIssueKey(key: KeyEvent, target: IssueTarget, allowComment = false) {
-      switch (key.name) {
-        case "s":
-          setModal({ type: "status", target })
-          return true
-        case "a":
-          setModal({ type: "assignee", target })
-          return true
-        case "o":
-          void openIssue(target)
-          return true
-        case "y":
-          void copyIdentifier(target)
-          return true
-        case "b":
-          if (key.shift) {
-            void checkoutBranch(target)
-          } else {
-            void copyBranch(target)
-          }
-          return true
-        case "B":
-          void checkoutBranch(target)
-          return true
-        case "c":
-          if (!allowComment) return false
-          setModal({ type: "comment", target })
-          return true
-        default:
-          return false
+      if (matchesKeyBinding(key, keybindings.issueStatus)) {
+        setModal({ type: "status", target })
+        return true
       }
+      if (matchesKeyBinding(key, keybindings.issueAssign)) {
+        setModal({ type: "assignee", target })
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueOpen)) {
+        void openIssue(target)
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueCopyId)) {
+        void copyIdentifier(target)
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueCopyBranch)) {
+        void copyBranch(target)
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueSwitchBranch)) {
+        void checkoutBranch(target)
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueNewSubIssue)) {
+        setModal({ type: "new-issue", parent: target })
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueComment)) {
+        if (!allowComment) return false
+        setModal({ type: "comment", target })
+        return true
+      }
+      return false
     },
   }
 }
