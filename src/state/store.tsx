@@ -1,4 +1,9 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
+import {
+  loadViewingPreferences,
+  saveViewingPreferences,
+  type ViewingPreferences,
+} from "../viewing/preferences"
 
 export type View = "my-issues" | "inbox" | "projects" | "cycles" | "search"
 export type IssueTarget = {
@@ -7,6 +12,7 @@ export type IssueTarget = {
   title: string
   url: string
   teamId: string | null
+  branchName: string
 }
 
 export type Modal =
@@ -14,6 +20,8 @@ export type Modal =
   | { type: "assignee"; target: IssueTarget }
   | { type: "comment"; target: IssueTarget }
   | { type: "new-issue" }
+  | { type: "filter" }
+  | { type: "group" }
 
 export type Toast = {
   id: number
@@ -32,6 +40,10 @@ type Store = {
   setHelpVisible: (v: boolean) => void
   modal: Modal | null
   setModal: (modal: Modal | null) => void
+  viewingPreferences: ViewingPreferences
+  setViewingPreferences: (
+    next: ViewingPreferences | ((current: ViewingPreferences) => ViewingPreferences)
+  ) => void
   toast: Toast | null
   addToast: (message: string, tone?: Toast["tone"]) => void
 }
@@ -44,6 +56,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [helpVisible, setHelpVisible] = useState(false)
   const [modal, setModal] = useState<Modal | null>(null)
+  const [viewingPreferences, setViewingPreferencesState] =
+    useState<ViewingPreferences>(loadViewingPreferences)
   const [toast, setToast] = useState<Toast | null>(null)
 
   const setViewWrapped = (v: View) => {
@@ -59,6 +73,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, 3000)
   }
 
+  const setViewingPreferences = (
+    next: ViewingPreferences | ((current: ViewingPreferences) => ViewingPreferences),
+  ) => {
+    setViewingPreferencesState((current) => {
+      const resolved = typeof next === "function" ? next(current) : next
+      saveViewingPreferences(resolved)
+      return resolved
+    })
+  }
+
   return (
     <Ctx.Provider
       value={{
@@ -72,6 +96,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setHelpVisible,
         modal,
         setModal,
+        viewingPreferences,
+        setViewingPreferences,
         toast,
         addToast,
       }}

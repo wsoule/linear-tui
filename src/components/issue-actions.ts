@@ -4,6 +4,20 @@ import type { IssueTarget } from "../state/store"
 import { useStore } from "../state/store"
 import type { IssueDetailData, IssueRow } from "../linear/queries"
 
+function slug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
+}
+
+function branchName(identifier: string, title: string, linearBranchName?: string): string {
+  if (linearBranchName) return linearBranchName
+  const titleSlug = slug(title)
+  return titleSlug ? `${identifier.toLowerCase()}-${titleSlug}` : identifier.toLowerCase()
+}
+
 export function targetFromRow(row: IssueRow): IssueTarget {
   return {
     issueId: row.issue.id,
@@ -11,6 +25,7 @@ export function targetFromRow(row: IssueRow): IssueTarget {
     title: row.issue.title,
     url: row.issue.url,
     teamId: row.team?.id ?? row.issue.teamId ?? null,
+    branchName: branchName(row.issue.identifier, row.issue.title, row.issue.branchName),
   }
 }
 
@@ -21,6 +36,7 @@ export function targetFromDetail(detail: IssueDetailData): IssueTarget {
     title: detail.issue.title,
     url: detail.issue.url,
     teamId: detail.team?.id ?? detail.issue.teamId ?? null,
+    branchName: branchName(detail.issue.identifier, detail.issue.title, detail.issue.branchName),
   }
 }
 
@@ -52,9 +68,28 @@ async function copyWithSystemClipboard(text: string): Promise<void> {
   if (code !== 0) throw new Error("pbcopy failed")
 }
 
+async function switchToBranch(branchName: string): Promise<void> {
+  const existing = Bun.spawn(["git", "switch", branchName], {
+    stdout: "ignore",
+    stderr: "ignore",
+  })
+  if (await existing.exited === 0) return
+
+  const created = Bun.spawn(["git", "switch", "-c", branchName], {
+    stdout: "ignore",
+    stderr: "ignore",
+  })
+  if (await created.exited !== 0) throw new Error("git branch switch failed")
+}
+
 export function useIssueActions() {
   const renderer = useRenderer()
   const { setModal, addToast } = useStore()
+
+  const copyToClipboard = async (text: string) => {
+    const copied = renderer.copyToClipboardOSC52(text)
+    if (!copied) await copyWithSystemClipboard(text)
+  }
 
   const openIssue = async (target: IssueTarget) => {
     try {
@@ -67,9 +102,26 @@ export function useIssueActions() {
 
   const copyIdentifier = async (target: IssueTarget) => {
     try {
-      const copied = renderer.copyToClipboardOSC52(target.identifier)
-      if (!copied) await copyWithSystemClipboard(target.identifier)
+      await copyToClipboard(target.identifier)
       addToast(`copied ${target.identifier}`, "success")
+    } catch (e) {
+      addToast(String(e instanceof Error ? e.message : e), "error")
+    }
+  }
+
+  const copyBranch = async (target: IssueTarget) => {
+    try {
+      await copyToClipboard(target.branchName)
+      addToast(`copied ${target.branchName}`, "success")
+    } catch (e) {
+      addToast(String(e instanceof Error ? e.message : e), "error")
+    }
+  }
+
+  const checkoutBranch = async (target: IssueTarget) => {
+    try {
+      await switchToBranch(target.branchName)
+      addToast(`switched to ${target.branchName}`, "success")
     } catch (e) {
       addToast(String(e instanceof Error ? e.message : e), "error")
     }
@@ -89,6 +141,16 @@ export function useIssueActions() {
           return true
         case "y":
           void copyIdentifier(target)
+          return true
+        case "b":
+          if (key.shift) {
+            void checkoutBranch(target)
+          } else {
+            void copyBranch(target)
+          }
+          return true
+        case "B":
+          void checkoutBranch(target)
           return true
         case "c":
           if (!allowComment) return false

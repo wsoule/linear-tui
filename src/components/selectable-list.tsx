@@ -14,6 +14,7 @@ type Props<T> = {
   renderRow: (item: T, selected: boolean) => ReactNode
   onSelect: (item: T) => void
   onKey?: (key: KeyEvent, item: T) => boolean
+  isSelectable?: (item: T) => boolean
 }
 
 export function SelectableList<T>({
@@ -27,13 +28,50 @@ export function SelectableList<T>({
   renderRow,
   onSelect,
   onKey,
+  isSelectable,
 }: Props<T>) {
   const [index, setIndex] = useState(0)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
+  const canSelect = (item: T) => isSelectable?.(item) ?? true
+
+  const firstSelectableIndex = (items: T[]) => {
+    const first = items.findIndex(canSelect)
+    return first === -1 ? 0 : first
+  }
+
+  const lastSelectableIndex = (items: T[]) => {
+    for (let i = items.length - 1; i >= 0; i -= 1) {
+      if (canSelect(items[i]!)) return i
+    }
+    return 0
+  }
+
+  const nextSelectableIndex = (items: T[], start: number, direction: 1 | -1) => {
+    for (let i = start + direction; i >= 0 && i < items.length; i += direction) {
+      if (canSelect(items[i]!)) return i
+    }
+    return start
+  }
+
+  const nearestSelectableIndex = (items: T[], start: number) => {
+    if (items.length === 0) return 0
+    const clamped = Math.max(0, Math.min(items.length - 1, start))
+    if (canSelect(items[clamped]!)) return clamped
+    const forward = nextSelectableIndex(items, clamped, 1)
+    if (forward !== clamped) return forward
+    const backward = nextSelectableIndex(items, clamped, -1)
+    if (backward !== clamped) return backward
+    return 0
+  }
 
   useEffect(() => {
-    if (items && index >= items.length) setIndex(Math.max(0, items.length - 1))
-  }, [items, index])
+    if (!items || items.length === 0) {
+      if (index !== 0) setIndex(0)
+      return
+    }
+    const nextIndex = nearestSelectableIndex(items, index)
+    if (nextIndex !== index) setIndex(nextIndex)
+  }, [items, index, isSelectable])
 
   useEffect(() => {
     if (!items || items.length === 0) return
@@ -45,18 +83,19 @@ export function SelectableList<T>({
   useKeyboard((key) => {
     if (!active || !items || items.length === 0) return
     const selectedItem = items[index]!
+    if (!canSelect(selectedItem)) return
     if (onKey?.(key, selectedItem)) return
     switch (key.name) {
       case "j":
       case "down":
-        setIndex((i) => Math.min(items.length - 1, i + 1)); break
+        setIndex((i) => nextSelectableIndex(items, i, 1)); break
       case "k":
       case "up":
-        setIndex((i) => Math.max(0, i - 1)); break
+        setIndex((i) => nextSelectableIndex(items, i, -1)); break
       case "g":
-        setIndex(0); break
+        if (!key.ctrl && !key.meta) setIndex(firstSelectableIndex(items)); break
       case "G":
-        setIndex(items.length - 1); break
+        setIndex(lastSelectableIndex(items)); break
       case "return":
       case "l":
         onSelect(selectedItem); break
@@ -81,6 +120,7 @@ export function SelectableList<T>({
           {items.map((item, i) => {
             const selected = i === index
             const id = getId(item)
+            const selectable = canSelect(item)
             return (
               <box
                 key={id}
@@ -92,7 +132,7 @@ export function SelectableList<T>({
                   paddingRight: 1,
                 }}
               >
-                <text fg={selected ? theme.accent : theme.fgMuted}>
+                <text fg={selected && selectable ? theme.accent : theme.fgMuted}>
                   {selected ? "▌" : " "}
                 </text>
                 {renderRow(item, selected)}

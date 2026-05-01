@@ -48,11 +48,11 @@ This is the part that earns the TUI its keep over the web app.
 - **Offline queue** — buffer mutations when the network is down, replay on reconnect.
 - **Multi-account** — switch between API keys / workspaces from the sidebar.
 
-## Phase 6 - Viewing
+## Phase 6 - Viewing (IN PROGRESS)
 
- - **Filters** - allow for filtering on issues and save filters
- - **Grouping** - allow for grouping on issues and save groupings
- - copy branch name to clipboard (pressing b) - also, add the ability to switch to that branch
+ - **Filters** - DONE: `f` opens a saved global issue filter, persisted to `~/.config/linear-tui/viewing.json`.
+ - **Grouping** - DONE: `ctrl+g` opens saved grouping by status, assignee, priority, or team.
+ - copy branch name to clipboard (pressing b) - DONE. `B` switches/creates the suggested branch.
  - this bug: 36rissuesycle
 
 

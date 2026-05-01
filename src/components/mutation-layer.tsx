@@ -23,6 +23,7 @@ import {
 } from "../linear/queries"
 import { useCachedQuery } from "../linear/use-query"
 import { invalidate } from "../linear/cache"
+import { GROUP_OPTIONS, groupByLabel, type IssueGroupBy } from "../viewing/preferences"
 import { theme } from "../theme"
 
 const priorities = [
@@ -420,12 +421,90 @@ function NewIssueModal() {
   )
 }
 
+function FilterModal() {
+  useModalEscape()
+  const { setModal, viewingPreferences, setViewingPreferences, addToast } = useStore()
+  const [value, setValue] = useState(viewingPreferences.filter)
+
+  const submit = () => {
+    const filter = value.trim()
+    setViewingPreferences((current) => ({ ...current, filter }))
+    setModal(null)
+    addToast(filter ? `saved filter: ${filter}` : "filter cleared", "success")
+  }
+
+  return (
+    <ModalFrame
+      title="Filter Issues"
+      subtitle="matches id, title, status, assignee, priority, or team"
+      wide
+    >
+      <box
+        style={{
+          flexDirection: "row",
+          borderStyle: "single",
+          borderColor: theme.borderActive,
+          paddingLeft: 1,
+          paddingRight: 1,
+        }}
+      >
+        <text fg={theme.fgMuted}>filter </text>
+        <input
+          focused
+          value={value}
+          onInput={setValue}
+          onSubmit={submit}
+          placeholder="submit empty to clear"
+        />
+      </box>
+    </ModalFrame>
+  )
+}
+
+function GroupModal() {
+  useModalEscape()
+  const { setModal, viewingPreferences, setViewingPreferences, addToast } = useStore()
+  const selectedIndex = Math.max(
+    0,
+    GROUP_OPTIONS.findIndex((option) => option.key === viewingPreferences.groupBy),
+  )
+
+  const choose = (groupBy: IssueGroupBy) => {
+    setViewingPreferences((current) => ({ ...current, groupBy }))
+    setModal(null)
+    addToast(`saved grouping: ${groupByLabel(groupBy)}`, "success")
+  }
+
+  return (
+    <ModalFrame title="Group Issues" subtitle="saved for every issue list">
+      <select
+        focused
+        width={48}
+        height={GROUP_OPTIONS.length}
+        showDescription={false}
+        selectedIndex={selectedIndex}
+        selectedBackgroundColor={theme.bgSelected}
+        selectedTextColor={theme.fg}
+        textColor={theme.fgDim}
+        options={GROUP_OPTIONS.map((option) => ({
+          name: option.label,
+          description: "",
+          value: option.key,
+        }))}
+        onSelect={(_, option) => choose((option?.value as IssueGroupBy | undefined) ?? "none")}
+      />
+    </ModalFrame>
+  )
+}
+
 export function MutationLayer() {
   const { modal } = useStore()
   if (!modal) return null
   if (modal.type === "status") return <StatusModal target={modal.target} />
   if (modal.type === "assignee") return <AssigneeModal target={modal.target} />
   if (modal.type === "comment") return <CommentModal target={modal.target} />
+  if (modal.type === "filter") return <FilterModal />
+  if (modal.type === "group") return <GroupModal />
   return <NewIssueModal />
 }
 
