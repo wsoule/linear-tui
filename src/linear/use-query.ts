@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { peekStale, subscribe } from "./cache"
+import { peek, peekStale, subscribe } from "./cache"
+import { beginRequest, recordError } from "./activity"
 
 export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
   const [data, setData] = useState<T | null>(() => peekStale<T>(key) ?? null)
@@ -15,16 +16,19 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
       }
     }
 
-    const cached = peekStale<T>(key)
-    if (cached !== undefined) {
-      setData(cached)
+    const fresh = peek<T>(key)
+    if (fresh !== undefined) {
+      setData(fresh)
       setError(null)
-    } else {
-      setData(null)
+      setRefreshing(false)
+      return subscribe(key, syncFromCache)
     }
 
     let cancelled = false
+    const cached = peekStale<T>(key)
+    setData(cached ?? null)
     setRefreshing(true)
+    const end = beginRequest()
     fetcher()
       .then((d) => {
         if (cancelled) return
@@ -32,9 +36,11 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
         setError(null)
       })
       .catch((e) => {
-        if (!cancelled) setError(String(e?.message ?? e))
+        const message = recordError(e)
+        if (!cancelled) setError(message)
       })
       .finally(() => {
+        end()
         if (!cancelled) setRefreshing(false)
       })
 

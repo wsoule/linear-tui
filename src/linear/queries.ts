@@ -8,6 +8,7 @@ import {
 } from "@linear/sdk"
 import { linear } from "./client"
 import { cacheKeys, cached, peekStale, remember } from "./cache"
+import { trackRequest } from "./activity"
 
 export type IssueRow = {
   issue: Issue
@@ -61,6 +62,7 @@ export const MY_ISSUES_KEY = "my-issues"
 export const INBOX_KEY = "inbox"
 export const PROJECTS_KEY = "projects"
 export const CYCLE_KEY = "cycle"
+export const VIEWER_KEY = "viewer"
 export const VIEWER_TEAMS_KEY = "viewer-teams"
 export const issueDetailKey = (id: string) => `issue:${id}`
 export const projectIssuesKey = (id: string) => `project-issues:${id}`
@@ -281,31 +283,39 @@ export async function updateIssueState(
   issueId: string,
   state: WorkflowState,
 ): Promise<void> {
-  await linear.updateIssue(issueId, { stateId: state.id })
-  await refreshIssueDetail(issueId)
+  await trackRequest(async () => {
+    await linear.updateIssue(issueId, { stateId: state.id })
+    await refreshIssueDetail(issueId)
+  })
 }
 
 export async function updateIssueAssignee(
   issueId: string,
   assignee: User | null,
 ): Promise<void> {
-  await linear.updateIssue(issueId, { assigneeId: assignee?.id ?? null })
-  await refreshIssueDetail(issueId)
+  await trackRequest(async () => {
+    await linear.updateIssue(issueId, { assigneeId: assignee?.id ?? null })
+    await refreshIssueDetail(issueId)
+  })
 }
 
 export async function createIssueComment(
   issueId: string,
   body: string,
 ): Promise<void> {
-  await linear.createComment({ issueId, body })
-  await refreshIssueDetail(issueId)
+  await trackRequest(async () => {
+    await linear.createComment({ issueId, body })
+    await refreshIssueDetail(issueId)
+  })
 }
 
 export async function createIssue(input: CreateIssueInput): Promise<IssueRow> {
-  const payload = await linear.createIssue(input)
-  const issue = await payload.issue
-  if (!issue) throw new Error("Linear did not return the created issue")
-  const row = await enrichIssue(issue)
-  addIssueRowToCaches(row)
-  return row
+  return trackRequest(async () => {
+    const payload = await linear.createIssue(input)
+    const issue = await payload.issue
+    if (!issue) throw new Error("Linear did not return the created issue")
+    const row = await enrichIssue(issue)
+    addIssueRowToCaches(row)
+    return row
+  })
 }

@@ -8,6 +8,7 @@ import { Cycles } from "./views/cycles"
 import { Search } from "./views/search"
 import { IssueDetail } from "./views/issue-detail"
 import { MutationLayer, ToastView } from "./components/mutation-layer"
+import { StatusLine } from "./components/status-line"
 import { StoreProvider, useStore } from "./state/store"
 import { theme } from "./theme"
 
@@ -90,7 +91,10 @@ function Shell() {
       }}
     >
       <Sidebar />
-      <box style={{ flexDirection: "column", flexGrow: 1 }}>{content}</box>
+      <box style={{ flexDirection: "column", flexGrow: 1 }}>
+        {content}
+        <StatusLine />
+      </box>
       <MutationLayer />
       {toast && <ToastView toast={toast} />}
       {helpVisible && <Help />}

@@ -30,13 +30,13 @@ This is the part that earns the TUI its keep over the web app.
 - **Open in browser** — `o`: opens `issue.url`.
 - **Copy id** — `y`: writes `issue.identifier` to the terminal/system clipboard.
 
-## Phase 4 — polish
+## Phase 4 — polish (DONE)
 
 - **Status line** — bottom bar with viewer name, current view, subtle in-flight marker, last error.
 - **In-memory cache** — small TTL'd map keyed by query so jumping list → detail → list doesn't re-fetch. Stale values render while fresh data syncs.
 - **Optimistic updates** — DONE for Phase 3 issue state, assignee, comments, and new issue detail creation.
 - **Toast** — DONE for Phase 3 mutation feedback and errors. Auto-dismiss after 3s.
-- **Theme** — let users override the palette via `~/.config/linear-tui/theme.json`.
+- **Theme** — users can override the palette via `~/.config/linear-tui/theme.json`.
 
 ## Phase 5 — stretch
 
@@ -46,6 +46,11 @@ This is the part that earns the TUI its keep over the web app.
 - **Attachments** — list, open URL.
 - **Offline queue** — buffer mutations when the network is down, replay on reconnect.
 - **Multi-account** — switch between API keys / workspaces from the sidebar.
+
+## Phase 6 - Viewing
+
+ - **Filters** - allow for filtering on issues and save filters
+ - **Grouping** - allow for grouping on issues and save groupings
 
 ## Known gotchas to keep in mind
 

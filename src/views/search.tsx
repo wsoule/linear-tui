@@ -6,6 +6,7 @@ import {
   type IssueRow,
 } from "../linear/queries"
 import { peek } from "../linear/cache"
+import { beginRequest, recordError } from "../linear/activity"
 import { IssueList } from "../components/issue-list"
 import { theme } from "../theme"
 
@@ -34,7 +35,9 @@ export function Search({ active }: { active: boolean }) {
     }
     setPending(true)
     let cancelled = false
+    let endRequest: (() => void) | null = null
     const t = setTimeout(() => {
+      endRequest = beginRequest()
       searchIssuesQuery(query)
         .then((r) => {
           if (cancelled) return
@@ -44,13 +47,18 @@ export function Search({ active }: { active: boolean }) {
         })
         .catch((e) => {
           if (cancelled) return
-          setError(String(e?.message ?? e))
+          setError(recordError(e))
           setPending(false)
+        })
+        .finally(() => {
+          endRequest?.()
         })
     }, 200)
     return () => {
       cancelled = true
       clearTimeout(t)
+      endRequest?.()
+      endRequest = null
     }
   }, [query])
 
