@@ -1,25 +1,49 @@
 import { useEffect, useState } from "react"
-import { peek } from "./cache"
+import { peekStale, subscribe } from "./cache"
 
 export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
-  const [data, setData] = useState<T | null>(() => peek<T>(key) ?? null)
+  const [data, setData] = useState<T | null>(() => peekStale<T>(key) ?? null)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(() => !peekStale<T>(key))
 
   useEffect(() => {
-    const cached = peek<T>(key)
-    if (cached) {
+    const syncFromCache = () => {
+      const cached = peekStale<T>(key)
+      setData(cached ?? null)
+      if (cached !== undefined) {
+        setError(null)
+      }
+    }
+
+    const cached = peekStale<T>(key)
+    if (cached !== undefined) {
       setData(cached)
       setError(null)
-      return
+    } else {
+      setData(null)
     }
-    setData(null)
-    setError(null)
+
     let cancelled = false
+    setRefreshing(true)
     fetcher()
-      .then((d) => { if (!cancelled) setData(d) })
-      .catch((e) => { if (!cancelled) setError(String(e?.message ?? e)) })
-    return () => { cancelled = true }
+      .then((d) => {
+        if (cancelled) return
+        setData(d)
+        setError(null)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String(e?.message ?? e))
+      })
+      .finally(() => {
+        if (!cancelled) setRefreshing(false)
+      })
+
+    const unsubscribe = subscribe(key, syncFromCache)
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [key])
 
-  return { data, error }
+  return { data, error, refreshing }
 }

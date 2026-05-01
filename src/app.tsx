@@ -7,6 +7,7 @@ import { Projects } from "./views/projects"
 import { Cycles } from "./views/cycles"
 import { Search } from "./views/search"
 import { IssueDetail } from "./views/issue-detail"
+import { MutationLayer, ToastView } from "./components/mutation-layer"
 import { StoreProvider, useStore } from "./state/store"
 import { theme } from "./theme"
 
@@ -21,6 +22,9 @@ function Shell() {
     setSelectedProjectId,
     helpVisible,
     setHelpVisible,
+    modal,
+    setModal,
+    toast,
   } = useStore()
 
   const inSearchView = view === "search" && !selectedIssueId
@@ -30,6 +34,8 @@ function Shell() {
       if (key.name === "escape" || key.name === "?") setHelpVisible(false)
       return
     }
+
+    if (modal) return
 
     if (key.name === "escape") {
       if (selectedIssueId) setSelectedIssueId(null)
@@ -48,6 +54,7 @@ function Shell() {
     switch (key.name) {
       case "q": renderer.destroy(); break
       case "?": setHelpVisible(true); break
+      case "n": setModal({ type: "new-issue" }); break
       case "m": setView("my-issues"); break
       case "i": setView("inbox"); break
       case "p": setView("projects"); break
@@ -56,11 +63,11 @@ function Shell() {
     }
   })
 
-  const listActive = !selectedIssueId && !helpVisible
+  const listActive = !selectedIssueId && !helpVisible && !modal
 
   let content
   if (selectedIssueId) {
-    content = <IssueDetail issueId={selectedIssueId} />
+    content = <IssueDetail issueId={selectedIssueId} active={!modal && !helpVisible} />
   } else if (view === "my-issues") {
     content = <MyIssues active={listActive} />
   } else if (view === "inbox") {
@@ -84,6 +91,8 @@ function Shell() {
     >
       <Sidebar />
       <box style={{ flexDirection: "column", flexGrow: 1 }}>{content}</box>
+      <MutationLayer />
+      {toast && <ToastView toast={toast} />}
       {helpVisible && <Help />}
     </box>
   )

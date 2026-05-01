@@ -100,7 +100,9 @@ export function Search({ active }: { active: boolean }) {
           title=""
           subtitle={
             pending
-              ? "searching…"
+              ? rows
+                ? `${rows.length} results · updating`
+                : "no cached results for this query"
               : rows
               ? `${rows.length} results${mode === "input" ? " · tab to navigate" : ""}`
               : undefined

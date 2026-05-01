@@ -2,6 +2,7 @@ import type { IssueRow } from "../linear/queries"
 import { SelectableList } from "./selectable-list"
 import { StatusBadge } from "./status-badge"
 import { useStore } from "../state/store"
+import { targetFromRow, useIssueActions } from "./issue-actions"
 import { theme } from "../theme"
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 export function IssueList({ title, subtitle, rows, error, active, emptyText }: Props) {
   const { setSelectedIssueId } = useStore()
+  const { handleIssueKey } = useIssueActions()
   return (
     <SelectableList<IssueRow>
       title={title}
@@ -25,6 +27,7 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
       emptyText={emptyText}
       getId={(r) => r.issue.id}
       onSelect={(r) => setSelectedIssueId(r.issue.id)}
+      onKey={(key, r) => handleIssueKey(key, targetFromRow(r))}
       renderRow={(r) => (
         <>
           <text fg={theme.fgMuted}>{` ${r.issue.identifier.padEnd(10)} `}</text>

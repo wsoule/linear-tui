@@ -1,43 +1,23 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { ScrollBoxRenderable } from "@opentui/core"
-import type { Issue, User, WorkflowState, Team } from "@linear/sdk"
-import { getIssueDetail, issueDetailKey } from "../linear/queries"
-import { peek } from "../linear/cache"
+import { getIssueDetail, issueDetailKey, type IssueDetailData } from "../linear/queries"
+import { useCachedQuery } from "../linear/use-query"
 import { StatusBadge } from "../components/status-badge"
+import { targetFromDetail, useIssueActions } from "../components/issue-actions"
 import { theme } from "../theme"
 
-type Detail = {
-  issue: Issue
-  state: WorkflowState | undefined
-  assignee: User | undefined
-  team: Team | undefined
-  comments: { comment: { body: string; createdAt: Date }; user: User | undefined }[]
-}
-
-export function IssueDetail({ issueId }: { issueId: string }) {
-  const [detail, setDetail] = useState<Detail | null>(
-    () => peek<Detail>(issueDetailKey(issueId)) ?? null,
+export function IssueDetail({ issueId, active }: { issueId: string; active: boolean }) {
+  const { data: detail, error } = useCachedQuery<IssueDetailData>(
+    issueDetailKey(issueId),
+    () => getIssueDetail(issueId),
   )
-  const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
-
-  useEffect(() => {
-    setError(null)
-    const cached = peek<Detail>(issueDetailKey(issueId))
-    if (cached) {
-      setDetail(cached)
-      return
-    }
-    setDetail(null)
-    let cancelled = false
-    getIssueDetail(issueId)
-      .then((d) => { if (!cancelled) setDetail(d as Detail) })
-      .catch((e) => { if (!cancelled) setError(String(e?.message ?? e)) })
-    return () => { cancelled = true }
-  }, [issueId])
+  const { handleIssueKey } = useIssueActions()
 
   useKeyboard((key) => {
+    if (!active) return
+    if (detail && handleIssueKey(key, targetFromDetail(detail), true)) return
     const sb = scrollRef.current
     if (!sb) return
     switch (key.name) {
@@ -63,7 +43,7 @@ export function IssueDetail({ issueId }: { issueId: string }) {
     }
   })
 
-  if (error) {
+  if (!detail && error) {
     return (
       <box style={{ padding: 1, flexDirection: "column" }}>
         <text fg={theme.danger}>error: {error}</text>
@@ -74,7 +54,7 @@ export function IssueDetail({ issueId }: { issueId: string }) {
   if (!detail) {
     return (
       <box style={{ padding: 1 }}>
-        <text fg={theme.fgDim}>loading issue…</text>
+        <text fg={theme.fgDim}>no cached issue data yet</text>
       </box>
     )
   }
@@ -119,7 +99,7 @@ export function IssueDetail({ issueId }: { issueId: string }) {
         ))
       )}
       <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}>j/k scroll · ctrl+d/u half-page · g/G top/bottom · esc back</text>
+      <text fg={theme.fgMuted}>s status · a assign · c comment · o open · y copy · esc back</text>
     </scrollbox>
   )
 }

@@ -19,23 +19,23 @@ All four reuse `IssueList`; the work is the queries plus a couple of minor UI af
 - **Cycles** — `team.activeCycle` per team; for the viewer's primary team, list `cycle.issues`. If the user is on multiple teams, show team picker first.
 - **Search** — `/` opens an `<input>` at the top of the pane, 200ms debounce, `linear.searchIssues(query, { first: 30 })`. Show empty-state hints (try `assignee:me`, `state:in-progress`).
 
-## Phase 3 — mutations
+## Phase 3 — mutations (DONE)
 
 This is the part that earns the TUI its keep over the web app.
 
 - **Status change** — `s` on a list row or detail pane: popup `<select>` of `team.states.nodes` for that issue's team, then `issue.update({ stateId })`. Optimistic update.
-- **Reassign** — `a`: popup `<select>` of recent assignees / `team.members`, then `issue.update({ assigneeId })`.
+- **Reassign** — `a`: popup `<select>` of `team.members`, then `issue.update({ assigneeId })`. Includes unassign.
 - **Comment** — `c` on detail: `<textarea>` overlay, ctrl-enter to submit `linear.createComment({ issueId, body })`.
 - **New issue** — `n`: full-screen form (team picker → title `<input>` → description `<textarea>` → priority `<select>`).
-- **Open in browser** — `o`: `Bun.$\`open ${issue.url}\``.
-- **Copy id** — `y`: write `issue.identifier` to the system clipboard.
+- **Open in browser** — `o`: opens `issue.url`.
+- **Copy id** — `y`: writes `issue.identifier` to the terminal/system clipboard.
 
 ## Phase 4 — polish
 
-- **Status line** — bottom bar with viewer name, current view, spinner during in-flight requests, last error.
-- **In-memory cache** — small TTL'd map keyed by query so jumping list → detail → list doesn't re-fetch. Invalidate on mutations.
-- **Optimistic updates** — apply mutation locally before the API confirms; reconcile / roll back on failure.
-- **Toast** — transient bottom-right messages for "marked done", "comment posted", errors. Auto-dismiss after 3s.
+- **Status line** — bottom bar with viewer name, current view, subtle in-flight marker, last error.
+- **In-memory cache** — small TTL'd map keyed by query so jumping list → detail → list doesn't re-fetch. Stale values render while fresh data syncs.
+- **Optimistic updates** — DONE for Phase 3 issue state, assignee, comments, and new issue detail creation.
+- **Toast** — DONE for Phase 3 mutation feedback and errors. Auto-dismiss after 3s.
 - **Theme** — let users override the palette via `~/.config/linear-tui/theme.json`.
 
 ## Phase 5 — stretch

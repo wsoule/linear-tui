@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
-import type { ScrollBoxRenderable } from "@opentui/core"
+import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core"
 import { theme } from "../theme"
 
 type Props<T> = {
@@ -13,6 +13,7 @@ type Props<T> = {
   getId: (item: T) => string
   renderRow: (item: T, selected: boolean) => ReactNode
   onSelect: (item: T) => void
+  onKey?: (key: KeyEvent, item: T) => boolean
 }
 
 export function SelectableList<T>({
@@ -25,6 +26,7 @@ export function SelectableList<T>({
   getId,
   renderRow,
   onSelect,
+  onKey,
 }: Props<T>) {
   const [index, setIndex] = useState(0)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
@@ -42,6 +44,8 @@ export function SelectableList<T>({
 
   useKeyboard((key) => {
     if (!active || !items || items.length === 0) return
+    const selectedItem = items[index]!
+    if (onKey?.(key, selectedItem)) return
     switch (key.name) {
       case "j":
       case "down":
@@ -55,7 +59,7 @@ export function SelectableList<T>({
         setIndex(items.length - 1); break
       case "return":
       case "l":
-        onSelect(items[index]!); break
+        onSelect(selectedItem); break
     }
   })
 
@@ -63,13 +67,13 @@ export function SelectableList<T>({
     <box style={{ flexDirection: "column", flexGrow: 1, padding: 1 }}>
       <text fg={theme.fg} attributes={1}>{title}</text>
       <text fg={theme.fgMuted}>
-        {subtitle ?? (items ? `${items.length} items` : "loading…")}
+        {subtitle ?? (items ? `${items.length} items` : "no local data yet")}
       </text>
       <text fg={theme.fgMuted}> </text>
       {error ? (
         <text fg={theme.danger}>error: {error}</text>
       ) : !items ? (
-        <text fg={theme.fgDim}>fetching…</text>
+        <text fg={theme.fgDim}>no cached rows yet</text>
       ) : items.length === 0 ? (
         <text fg={theme.fgDim}>{emptyText}</text>
       ) : (

@@ -42,6 +42,7 @@ export function Sidebar() {
         )
       })}
       <text fg={theme.fgMuted}> </text>
+      <text fg={theme.fgMuted}> n  new issue</text>
       <text fg={theme.fgMuted}> ?  help</text>
       <text fg={theme.fgMuted}> q  quit</text>
     </box>

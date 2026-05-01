@@ -1,0 +1,454 @@
+import { useRef, useState, type ReactNode } from "react"
+import { useKeyboard } from "@opentui/react"
+import type { Issue, Team, User, WorkflowState } from "@linear/sdk"
+import type { TextareaRenderable } from "@opentui/core"
+import { useStore, type IssueTarget, type Toast } from "../state/store"
+import {
+  appendCommentCache,
+  createIssue,
+  createIssueComment,
+  getIssueDetail,
+  getTeamMembers,
+  getTeamStates,
+  getViewerTeams,
+  issueDetailKey,
+  patchIssueCaches,
+  rememberIssueDetail,
+  teamMembersKey,
+  teamStatesKey,
+  updateIssueAssignee,
+  updateIssueState,
+  VIEWER_TEAMS_KEY,
+  type IssueDetailData,
+} from "../linear/queries"
+import { useCachedQuery } from "../linear/use-query"
+import { invalidate } from "../linear/cache"
+import { theme } from "../theme"
+
+const priorities = [
+  { name: "No priority", value: 0 },
+  { name: "Urgent", value: 1 },
+  { name: "High", value: 2 },
+  { name: "Medium", value: 3 },
+  { name: "Low", value: 4 },
+]
+
+function priorityLabel(priority: number): string {
+  return priorities.find((p) => p.value === priority)?.name ?? "No priority"
+}
+
+function useModalEscape() {
+  const { setModal } = useStore()
+  useKeyboard((key) => {
+    if (key.name === "escape") setModal(null)
+  })
+}
+
+function ModalFrame({
+  title,
+  subtitle,
+  children,
+  wide = false,
+}: {
+  title: string
+  subtitle: string
+  children: ReactNode
+  wide?: boolean
+}) {
+  return (
+    <box
+      style={{
+        position: "absolute",
+        top: 2,
+        left: wide ? 26 : 34,
+        width: wide ? 72 : 54,
+        padding: 1,
+        borderStyle: "double",
+        borderColor: theme.borderActive,
+        backgroundColor: theme.bgPanel,
+        flexDirection: "column",
+        zIndex: 50,
+      }}
+    >
+      <text fg={theme.accent} attributes={1}>{title}</text>
+      <text fg={theme.fgMuted}>{subtitle}</text>
+      <text fg={theme.fgMuted}> </text>
+      {children}
+      <text fg={theme.fgMuted}> </text>
+      <text fg={theme.fgMuted}>esc cancel</text>
+    </box>
+  )
+}
+
+function useTargetDetail(target: IssueTarget) {
+  return useCachedQuery<IssueDetailData>(
+    issueDetailKey(target.issueId),
+    () => getIssueDetail(target.issueId),
+  )
+}
+
+function StatusModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const detail = useTargetDetail(target)
+  const teamId = target.teamId ?? detail.data?.team?.id ?? null
+  const { data: states, error } = useCachedQuery<WorkflowState[]>(
+    teamId ? teamStatesKey(teamId) : "team-states:none",
+    () => teamId ? getTeamStates(teamId) : Promise.resolve([]),
+  )
+
+  const choose = (state: WorkflowState | null) => {
+    if (!state) return
+    setModal(null)
+    const rollback = patchIssueCaches(target.issueId, { state })
+    addToast(`${target.identifier} -> ${state.name}`, "info")
+    updateIssueState(target.issueId, state)
+      .then(() => addToast(`${target.identifier} updated`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame title="Change Status" subtitle={`${target.identifier}  ${target.title}`}>
+      {error ? (
+        <text fg={theme.danger}>error: {error}</text>
+      ) : !states ? (
+        <text fg={theme.fgDim}>no cached team states yet</text>
+      ) : (
+        <select
+          focused
+          width={48}
+          height={Math.min(10, Math.max(3, states.length))}
+          showDescription={false}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={states.map((state) => ({
+            name: state.name,
+            description: state.type,
+            value: state,
+          }))}
+          onSelect={(_, option) => choose((option?.value as WorkflowState | undefined) ?? null)}
+        />
+      )}
+    </ModalFrame>
+  )
+}
+
+function AssigneeModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const detail = useTargetDetail(target)
+  const teamId = target.teamId ?? detail.data?.team?.id ?? null
+  const { data: members, error } = useCachedQuery<User[]>(
+    teamId ? teamMembersKey(teamId) : "team-members:none",
+    () => teamId ? getTeamMembers(teamId) : Promise.resolve([]),
+  )
+
+  const choose = (assignee: User | null) => {
+    setModal(null)
+    const rollback = patchIssueCaches(target.issueId, { assignee })
+    addToast(
+      `${target.identifier} -> ${assignee?.displayName ?? "unassigned"}`,
+      "info",
+    )
+    updateIssueAssignee(target.issueId, assignee)
+      .then(() => addToast(`${target.identifier} updated`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame title="Reassign" subtitle={`${target.identifier}  ${target.title}`}>
+      {error ? (
+        <text fg={theme.danger}>error: {error}</text>
+      ) : !members ? (
+        <text fg={theme.fgDim}>no cached team members yet</text>
+      ) : (
+        <select
+          focused
+          width={48}
+          height={Math.min(12, Math.max(3, members.length + 1))}
+          showDescription={false}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={[
+            { name: "Unassigned", description: "", value: null },
+            ...members.map((member) => ({
+              name: member.displayName,
+              description: member.email,
+              value: member,
+            })),
+          ]}
+          onSelect={(_, option) => choose((option?.value as User | null | undefined) ?? null)}
+        />
+      )}
+    </ModalFrame>
+  )
+}
+
+function CommentModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const ref = useRef<TextareaRenderable | null>(null)
+
+  const submit = () => {
+    const body = ref.current?.plainText.trim() ?? ""
+    if (!body) return
+    setModal(null)
+    const rollback = appendCommentCache(target.issueId, {
+      comment: { body, createdAt: new Date() },
+      user: undefined,
+    })
+    addToast(`posting comment on ${target.identifier}`, "info")
+    createIssueComment(target.issueId, body)
+      .then(() => addToast(`comment posted on ${target.identifier}`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame
+      title="Comment"
+      subtitle={`${target.identifier}  ctrl+enter submit`}
+      wide
+    >
+      <textarea
+        ref={ref}
+        focused
+        width={66}
+        height={10}
+        placeholder="Write a comment..."
+        textColor={theme.fg}
+        focusedTextColor={theme.fg}
+        backgroundColor={theme.bg}
+        focusedBackgroundColor={theme.bg}
+        cursorColor={theme.accent}
+        keyBindings={[{ name: "return", ctrl: true, action: "submit" }]}
+        onSubmit={submit}
+      />
+    </ModalFrame>
+  )
+}
+
+function optimisticIssue(
+  id: string,
+  team: Team,
+  title: string,
+  description: string,
+  priority: number,
+): Issue {
+  return {
+    id,
+    identifier: `${team.key}-new`,
+    title,
+    description,
+    priority,
+    priorityLabel: priorityLabel(priority),
+    url: "",
+    teamId: team.id,
+  } as Issue
+}
+
+function NewIssueModal() {
+  useModalEscape()
+  const { setModal, setSelectedIssueId, addToast } = useStore()
+  const { data: teams, error } = useCachedQuery<Team[]>(
+    VIEWER_TEAMS_KEY,
+    getViewerTeams,
+  )
+  const [step, setStep] = useState<"team" | "title" | "description" | "priority">("team")
+  const [team, setTeam] = useState<Team | null>(null)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [priority, setPriority] = useState(0)
+  const descriptionRef = useRef<TextareaRenderable | null>(null)
+
+  const submit = (selectedPriority: number) => {
+    if (!team || !title.trim()) return
+    const id = crypto.randomUUID()
+    rememberIssueDetail({
+      issue: optimisticIssue(id, team, title.trim(), description, selectedPriority),
+      state: undefined,
+      assignee: undefined,
+      team,
+      comments: [],
+    })
+    setSelectedIssueId(id)
+    setModal(null)
+    addToast("creating issue", "info")
+    createIssue({
+      id,
+      teamId: team.id,
+      title: title.trim(),
+      description: description || undefined,
+      priority: selectedPriority,
+    })
+      .then((row) => {
+        if (row.issue.id !== id) invalidate(issueDetailKey(id))
+        setSelectedIssueId(row.issue.id)
+        addToast(`created ${row.issue.identifier}`, "success")
+      })
+      .catch((e) => {
+        invalidate(issueDetailKey(id))
+        setSelectedIssueId(null)
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <box
+      style={{
+        position: "absolute",
+        top: 1,
+        left: 24,
+        right: 2,
+        bottom: 1,
+        padding: 1,
+        borderStyle: "double",
+        borderColor: theme.borderActive,
+        backgroundColor: theme.bgPanel,
+        flexDirection: "column",
+        zIndex: 50,
+      }}
+    >
+      <text fg={theme.accent} attributes={1}>New Issue</text>
+      <text fg={theme.fgMuted}>
+        {step === "team"
+          ? "choose team"
+          : step === "title"
+          ? "enter title"
+          : step === "description"
+          ? "description · ctrl+enter next"
+          : "choose priority"}
+      </text>
+      <text fg={theme.fgMuted}> </text>
+      {error ? (
+        <text fg={theme.danger}>error: {error}</text>
+      ) : !teams ? (
+        <text fg={theme.fgDim}>no cached teams yet</text>
+      ) : step === "team" ? (
+        <select
+          focused
+          width={56}
+          height={Math.min(12, Math.max(3, teams.length))}
+          showDescription={false}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={teams.map((t) => ({
+            name: `${t.key}  ${t.name}`,
+            description: t.description ?? "",
+            value: t,
+          }))}
+          onSelect={(_, option) => {
+            setTeam((option?.value as Team | undefined) ?? null)
+            setStep("title")
+          }}
+        />
+      ) : step === "title" ? (
+        <box
+          style={{
+            flexDirection: "row",
+            borderStyle: "single",
+            borderColor: theme.borderActive,
+            paddingLeft: 1,
+            paddingRight: 1,
+          }}
+        >
+          <text fg={theme.fgMuted}>title </text>
+          <input
+            focused
+            value={title}
+            onInput={setTitle}
+            onSubmit={() => {
+              if (title.trim()) setStep("description")
+            }}
+            placeholder="Issue title"
+          />
+        </box>
+      ) : step === "description" ? (
+        <textarea
+          ref={descriptionRef}
+          focused
+          width="100%"
+          height={12}
+          placeholder="Issue description..."
+          textColor={theme.fg}
+          focusedTextColor={theme.fg}
+          backgroundColor={theme.bg}
+          focusedBackgroundColor={theme.bg}
+          cursorColor={theme.accent}
+          keyBindings={[{ name: "return", ctrl: true, action: "submit" }]}
+          onSubmit={() => {
+            setDescription(descriptionRef.current?.plainText.trim() ?? "")
+            setStep("priority")
+          }}
+        />
+      ) : (
+        <select
+          focused
+          width={56}
+          height={5}
+          showDescription={false}
+          selectedIndex={priorities.findIndex((p) => p.value === priority)}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={priorities.map((p) => ({
+            name: p.name,
+            description: "",
+            value: p.value,
+          }))}
+          onChange={(_, option) => setPriority((option?.value as number | undefined) ?? 0)}
+          onSelect={(_, option) => submit((option?.value as number | undefined) ?? priority)}
+        />
+      )}
+      <text fg={theme.fgMuted}> </text>
+      <text fg={theme.fgMuted}>esc cancel</text>
+    </box>
+  )
+}
+
+export function MutationLayer() {
+  const { modal } = useStore()
+  if (!modal) return null
+  if (modal.type === "status") return <StatusModal target={modal.target} />
+  if (modal.type === "assignee") return <AssigneeModal target={modal.target} />
+  if (modal.type === "comment") return <CommentModal target={modal.target} />
+  return <NewIssueModal />
+}
+
+export function ToastView({ toast }: { toast: Toast }) {
+  const color =
+    toast.tone === "success"
+      ? theme.success
+      : toast.tone === "error"
+      ? theme.danger
+      : theme.accent
+  return (
+    <box
+      style={{
+        position: "absolute",
+        right: 2,
+        bottom: 1,
+        width: 46,
+        paddingLeft: 1,
+        paddingRight: 1,
+        borderStyle: "single",
+        borderColor: color,
+        backgroundColor: theme.bgPanel,
+        zIndex: 60,
+      }}
+    >
+      <text fg={color}>{toast.message}</text>
+    </box>
+  )
+}

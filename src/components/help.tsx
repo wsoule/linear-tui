@@ -23,8 +23,22 @@ const SECTIONS: { heading: string; rows: [string, string][] }[] = [
     ],
   },
   {
+    heading: "issue rows",
+    rows: [
+      ["s", "change status"],
+      ["a", "reassign"],
+      ["o", "open in browser"],
+      ["y", "copy issue id"],
+    ],
+  },
+  {
     heading: "issue detail",
     rows: [
+      ["s", "change status"],
+      ["a", "reassign"],
+      ["c", "comment"],
+      ["o", "open in browser"],
+      ["y", "copy issue id"],
       ["j / k", "scroll line"],
       ["ctrl+d / u", "scroll half-page"],
       ["space / pgdn", "scroll viewport"],
@@ -41,6 +55,7 @@ const SECTIONS: { heading: string; rows: [string, string][] }[] = [
   {
     heading: "global",
     rows: [
+      ["n", "new issue"],
       ["?", "toggle help"],
       ["q", "quit"],
     ],
