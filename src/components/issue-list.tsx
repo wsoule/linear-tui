@@ -1,4 +1,4 @@
-import type { IssueRow } from "../linear/queries"
+import { primeIssueDetail, type IssueRow } from "../linear/queries"
 import { SelectableList } from "./selectable-list"
 import { StatusBadge } from "./status-badge"
 import { useStore } from "../state/store"
@@ -26,7 +26,10 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
       active={active}
       emptyText={emptyText}
       getId={(r) => r.issue.id}
-      onSelect={(r) => setSelectedIssueId(r.issue.id)}
+      onSelect={(r) => {
+        primeIssueDetail(r)
+        setSelectedIssueId(r.issue.id)
+      }}
       onKey={(key, r) => handleIssueKey(key, targetFromRow(r))}
       renderRow={(r) => (
         <>

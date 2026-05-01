@@ -294,6 +294,18 @@ export function rememberIssueDetail(detail: IssueDetailData): void {
   remember(issueDetailKey(detail.issue.id), detail)
 }
 
+export function primeIssueDetail(row: IssueRow): void {
+  const key = issueDetailKey(row.issue.id)
+  if (peekStale<IssueDetailData>(key)) return
+  rememberIssueDetail({
+    ...row,
+    comments: [],
+    children: [],
+    relations: [],
+    attachments: [],
+  })
+}
+
 export function appendCommentCache(
   issueId: string,
   comment: IssueCommentRow,
@@ -312,13 +324,7 @@ export function addIssueRowToCaches(row: IssueRow): void {
     const current = peekStale<IssueRow[]>(MY_ISSUES_KEY)
     if (current) remember(MY_ISSUES_KEY, [row, ...current])
   }
-  rememberIssueDetail({
-    ...row,
-    comments: [],
-    children: [],
-    relations: [],
-    attachments: [],
-  })
+  primeIssueDetail(row)
 }
 
 export async function updateIssueState(
