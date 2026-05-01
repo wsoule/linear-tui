@@ -1,0 +1,23 @@
+{
+  "name": "linear",
+  "module": "src/index.tsx",
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "dev": "bun --hot src/index.tsx"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.14"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@linear/sdk": "^83.0.0",
+    "@opentui/core": "^0.2.1",
+    "@opentui/react": "^0.2.1",
+    "react": "^19.2.5"
+  }
+}

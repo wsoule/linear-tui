@@ -1,0 +1,21 @@
+export const theme = {
+  bg: "#0e0e10",
+  bgPanel: "#16161a",
+  bgSelected: "#26262e",
+  border: "#2a2a32",
+  borderActive: "#5e6ad2",
+  fg: "#e6e6e6",
+  fgDim: "#8a8a96",
+  fgMuted: "#5c5c66",
+  accent: "#5e6ad2",
+  warn: "#f2c94c",
+  danger: "#eb5757",
+  success: "#4cb782",
+  priority: {
+    0: "#5c5c66",
+    1: "#eb5757",
+    2: "#f2994a",
+    3: "#f2c94c",
+    4: "#8a8a96",
+  } as Record<number, string>,
+} as const
