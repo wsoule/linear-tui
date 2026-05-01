@@ -3,7 +3,7 @@ type ActivityState = {
   lastError: string | null
 }
 
-const state: ActivityState = {
+let snapshot: ActivityState = {
   pending: 0,
   lastError: null,
 }
@@ -15,7 +15,7 @@ function emit() {
 }
 
 export function getActivitySnapshot(): ActivityState {
-  return { ...state }
+  return snapshot
 }
 
 export function subscribeActivity(listener: () => void): () => void {
@@ -25,19 +25,19 @@ export function subscribeActivity(listener: () => void): () => void {
 
 export function beginRequest(): () => void {
   let ended = false
-  state.pending += 1
+  snapshot = { ...snapshot, pending: snapshot.pending + 1 }
   emit()
   return () => {
     if (ended) return
     ended = true
-    state.pending = Math.max(0, state.pending - 1)
+    snapshot = { ...snapshot, pending: Math.max(0, snapshot.pending - 1) }
     emit()
   }
 }
 
 export function recordError(error: unknown): string {
   const message = String(error instanceof Error ? error.message : error)
-  state.lastError = message
+  snapshot = { ...snapshot, lastError: message }
   emit()
   return message
 }
