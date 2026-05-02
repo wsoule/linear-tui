@@ -65,7 +65,3 @@ Theme overrides can be placed at `~/.config/linear-tui/theme.json`:
 ```sh
 bun run typecheck
 ```
-
-## Release
-
-Tags matching `v*` trigger `.github/workflows/homebrew-tap.yml`, which updates `wsoule/homebrew-tap`. Add a `HOMEBREW_TAP_TOKEN` repository secret with write access to the tap before tagging releases.
