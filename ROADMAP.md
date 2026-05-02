@@ -52,6 +52,7 @@ This is the part that earns the TUI its keep over the web app.
 
  - **Filters** - DONE: `f` opens a saved global issue filter, persisted to `~/.config/linear-tui/viewing.json`.
  - **Grouping** - DONE: `ctrl+g` opens saved grouping by status, assignee, priority, or team.
+ - **Ordering** - DONE: `ctrl+o` opens saved ordering; grouped lists sort issues inside each group.
  - copy branch name to clipboard - DONE. Defaults to `y`; `B` switches/creates the suggested branch.
  - **Keybinding settings** - DONE: `,` opens settings, keybindings persist to `~/.config/linear-tui/keybindings.json`.
  - this bug: 36rissuesycle

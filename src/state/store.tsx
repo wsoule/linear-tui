@@ -28,6 +28,7 @@ export type Modal =
   | { type: "new-issue"; parent?: IssueTarget }
   | { type: "filter" }
   | { type: "group" }
+  | { type: "order" }
   | { type: "settings" }
 
 export type Toast = {

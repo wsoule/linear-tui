@@ -5,7 +5,12 @@ import { SelectableList } from "./selectable-list"
 import { StatusBadge } from "./status-badge"
 import { useStore } from "../state/store"
 import { targetFromRow, useIssueActions } from "./issue-actions"
-import { groupByLabel, type IssueGroupBy } from "../viewing/preferences"
+import {
+  groupByLabel,
+  orderByLabel,
+  type IssueGroupBy,
+  type IssueOrderBy,
+} from "../viewing/preferences"
 import { matchesKeyBinding } from "../keybindings"
 import { theme } from "../theme"
 
@@ -59,8 +64,53 @@ function groupValue(row: IssueRow, groupBy: IssueGroupBy): string {
   }
 }
 
-function issueItems(rows: IssueRow[], groupBy: IssueGroupBy): IssueListItem[] {
-  if (groupBy === "none") return rows.map((row) => ({ type: "issue", row }))
+function statusRank(row: IssueRow): number {
+  const type = row.state?.type ?? ""
+  const ranks: Record<string, number> = {
+    triage: 0,
+    backlog: 1,
+    unstarted: 2,
+    started: 3,
+    completed: 4,
+    canceled: 5,
+  }
+  return ranks[type] ?? 99
+}
+
+function orderText(row: IssueRow, orderBy: IssueOrderBy): string {
+  switch (orderBy) {
+    case "status":
+      return `${statusRank(row)}:${row.state?.position ?? 999}:${row.state?.name ?? ""}`
+    case "assignee":
+      return row.assignee?.displayName ?? "zzzzzzzz-unassigned"
+    case "priority":
+      return String(row.issue.priority === 0 ? 99 : row.issue.priority).padStart(2, "0")
+    case "team":
+      return row.team?.key ?? "zzzzzzzz-no-team"
+    case "identifier":
+      return row.issue.identifier
+    case "title":
+      return row.issue.title
+    case "none":
+      return ""
+  }
+}
+
+function sortRows(rows: IssueRow[], orderBy: IssueOrderBy): IssueRow[] {
+  if (orderBy === "none") return rows
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const av = orderText(a.row, orderBy)
+      const bv = orderText(b.row, orderBy)
+      const byValue = av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" })
+      return byValue || a.index - b.index
+    })
+    .map(({ row }) => row)
+}
+
+function issueItems(rows: IssueRow[], groupBy: IssueGroupBy, orderBy: IssueOrderBy): IssueListItem[] {
+  if (groupBy === "none") return sortRows(rows, orderBy).map((row) => ({ type: "issue", row }))
 
   const groups = new Map<string, IssueRow[]>()
   for (const row of rows) {
@@ -70,7 +120,7 @@ function issueItems(rows: IssueRow[], groupBy: IssueGroupBy): IssueListItem[] {
 
   return [...groups.entries()].flatMap(([label, groupRows]) => [
     { type: "group" as const, id: `${groupBy}:${label}`, label, count: groupRows.length },
-    ...groupRows.map((row) => ({ type: "issue" as const, row })),
+    ...sortRows(groupRows, orderBy).map((row) => ({ type: "issue" as const, row })),
   ])
 }
 
@@ -82,8 +132,8 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
     [rows, viewingPreferences.filter],
   )
   const items = useMemo(
-    () => filteredRows ? issueItems(filteredRows, viewingPreferences.groupBy) : null,
-    [filteredRows, viewingPreferences.groupBy],
+    () => filteredRows ? issueItems(filteredRows, viewingPreferences.groupBy, viewingPreferences.orderBy) : null,
+    [filteredRows, viewingPreferences.groupBy, viewingPreferences.orderBy],
   )
 
   useKeyboard((key) => {
@@ -94,11 +144,16 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
     }
     if (matchesKeyBinding(key, keybindings.viewGroup)) {
       setModal({ type: "group" })
+      return
+    }
+    if (matchesKeyBinding(key, keybindings.viewOrder)) {
+      setModal({ type: "order" })
     }
   })
 
   const filterActive = Boolean(viewingPreferences.filter.trim())
   const groupActive = viewingPreferences.groupBy !== "none"
+  const orderActive = viewingPreferences.orderBy !== "none"
   const countText = rows
     ? filterActive
       ? `${filteredRows?.length ?? 0}/${rows.length} issues`
@@ -108,6 +163,7 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
     countText,
     filterActive ? `filter: ${viewingPreferences.filter.trim()}` : null,
     groupActive ? `group: ${groupByLabel(viewingPreferences.groupBy)}` : null,
+    orderActive ? `order: ${orderByLabel(viewingPreferences.orderBy)}` : null,
   ].filter(Boolean).join(" · ")
   const resolvedSubtitle = subtitle
     ? controls

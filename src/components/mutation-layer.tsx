@@ -24,7 +24,14 @@ import {
 } from "../linear/queries"
 import { useCachedQuery } from "../linear/use-query"
 import { invalidate } from "../linear/cache"
-import { GROUP_OPTIONS, groupByLabel, type IssueGroupBy } from "../viewing/preferences"
+import {
+  GROUP_OPTIONS,
+  ORDER_OPTIONS,
+  groupByLabel,
+  orderByLabel,
+  type IssueGroupBy,
+  type IssueOrderBy,
+} from "../viewing/preferences"
 import { theme } from "../theme"
 
 const priorities = [
@@ -517,6 +524,42 @@ function GroupModal() {
   )
 }
 
+function OrderModal() {
+  useModalEscape()
+  const { setModal, viewingPreferences, setViewingPreferences, addToast } = useStore()
+  const selectedIndex = Math.max(
+    0,
+    ORDER_OPTIONS.findIndex((option) => option.key === viewingPreferences.orderBy),
+  )
+
+  const choose = (orderBy: IssueOrderBy) => {
+    setViewingPreferences((current) => ({ ...current, orderBy }))
+    setModal(null)
+    addToast(`saved ordering: ${orderByLabel(orderBy)}`, "success")
+  }
+
+  return (
+    <ModalFrame title="Order Issues" subtitle="applies inside each group">
+      <select
+        focused
+        width={48}
+        height={ORDER_OPTIONS.length}
+        showDescription={false}
+        selectedIndex={selectedIndex}
+        selectedBackgroundColor={theme.bgSelected}
+        selectedTextColor={theme.fg}
+        textColor={theme.fgDim}
+        options={ORDER_OPTIONS.map((option) => ({
+          name: option.label,
+          description: "",
+          value: option.key,
+        }))}
+        onSelect={(_, option) => choose((option?.value as IssueOrderBy | undefined) ?? "none")}
+      />
+    </ModalFrame>
+  )
+}
+
 function SettingsModal() {
   useModalEscape()
   const { keybindings, setKeybinding, setModal, addToast } = useStore()
@@ -592,6 +635,7 @@ export function MutationLayer() {
   if (modal.type === "comment") return <CommentModal target={modal.target} />
   if (modal.type === "filter") return <FilterModal />
   if (modal.type === "group") return <GroupModal />
+  if (modal.type === "order") return <OrderModal />
   if (modal.type === "settings") return <SettingsModal />
   return <NewIssueModal parent={modal.parent} />
 }

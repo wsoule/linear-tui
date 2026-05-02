@@ -37,6 +37,7 @@ export function Help() {
         [keybindings.issueSwitchBranch, "switch branch"],
         [keybindings.viewFilter, "filter issues"],
         [keybindings.viewGroup, "group issues"],
+        [keybindings.viewOrder, "order issues"],
       ],
     },
     {
