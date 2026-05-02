@@ -1,5 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { isRecord, readJsonConfig } from "./config-files"
 
 const baseTheme = {
   bg: "#0e0e10",
@@ -28,30 +27,16 @@ type ThemeOverride = Partial<Omit<Theme, "priority">> & {
   priority?: Partial<Record<number, string>>
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 function readThemeOverride(): ThemeOverride {
-  const home = process.env.HOME
-  if (!home) return {}
-
-  const path = join(home, ".config", "linear-tui", "theme.json")
-  if (!existsSync(path)) return {}
-
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8"))
-    if (!isRecord(parsed)) return {}
-    const priority = isRecord(parsed.priority)
-      ? parsed.priority as Partial<Record<number, string>>
-      : undefined
-    return {
-      ...parsed,
-      priority,
-    } as ThemeOverride
-  } catch {
-    return {}
-  }
+  const parsed = readJsonConfig("theme.json")
+  if (!isRecord(parsed)) return {}
+  const priority = isRecord(parsed.priority)
+    ? parsed.priority as Partial<Record<number, string>>
+    : undefined
+  return {
+    ...parsed,
+    priority,
+  } as ThemeOverride
 }
 
 function loadTheme(): Theme {

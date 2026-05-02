@@ -8,6 +8,7 @@ import {
 import { peek } from "../linear/cache"
 import { beginRequest, recordError } from "../linear/activity"
 import { IssueList } from "../components/issue-list"
+import { TextLine } from "../components/text-line"
 import { theme } from "../theme"
 
 type Mode = "input" | "results"
@@ -76,13 +77,13 @@ export function Search({ active }: { active: boolean }) {
 
   return (
     <box style={{ flexDirection: "column", flexGrow: 1, padding: 1 }}>
-      <text fg={theme.fg} attributes={1}>Search</text>
-      <text fg={theme.fgMuted}>
+      <TextLine fg={theme.fg} attributes={1}>Search</TextLine>
+      <TextLine fg={theme.fgMuted}>
         {mode === "input"
           ? "type · tab → results · esc leaves"
           : "j/k navigate · enter open · tab back to input · esc leaves"}
-      </text>
-      <text fg={theme.fgMuted}> </text>
+      </TextLine>
+      <TextLine fg={theme.fgMuted}> </TextLine>
       <box
         style={{
           flexDirection: "row",

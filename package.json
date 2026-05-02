@@ -1,12 +1,18 @@
 {
-  "name": "linear",
+  "name": "linear-tui",
+  "version": "0.1.0",
+  "description": "A keyboard-first Linear client for the terminal.",
   "module": "src/index.tsx",
+  "bin": {
+    "linear-tui": "bin/linear-tui"
+  },
   "scripts": {
     "start": "bun run src/index.tsx",
-    "dev": "bun --hot src/index.tsx"
+    "dev": "bun --hot src/index.tsx",
+    "typecheck": "tsc --noEmit"
   },
   "type": "module",
-  "private": true,
+  "license": "MIT",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.2.14"

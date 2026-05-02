@@ -1,0 +1,69 @@
+name: Update Homebrew tap
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  update-homebrew-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          repository: wsoule/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          revision="$(git ls-remote "https://github.com/${REPOSITORY}.git" "refs/tags/${TAG}^{}" | awk '{print $1}')"
+          if [ -z "$revision" ]; then
+            revision="$(git ls-remote "https://github.com/${REPOSITORY}.git" "refs/tags/${TAG}" | awk '{print $1}')"
+          fi
+          if [ -z "$revision" ]; then
+            echo "Could not resolve ${TAG} to a commit SHA" >&2
+            exit 1
+          fi
+
+          formula="homebrew-tap/Formula/linear-tui.rb"
+          ruby - "$formula" "$TAG" "$revision" <<'RUBY'
+          path, tag, revision = ARGV
+          text = File.read(path)
+          replacement = <<~FORMULA.chomp
+            url "https://github.com/wsoule/linear-tui.git",
+                tag:      "#{tag}",
+                revision: "#{revision}"
+          FORMULA
+          updated = text.sub(
+            /url "https:\/\/github\.com\/wsoule\/linear-tui\.git",\n\s+tag:\s+"[^"]+",\n\s+revision:\s+"[0-9a-f]+"/,
+            replacement,
+          )
+          abort "Formula URL block not found" if updated == text
+          File.write(path, updated)
+          RUBY
+
+      - name: Commit and push tap update
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/linear-tui.rb
+          if git diff --cached --quiet; then
+            echo "Formula already up to date"
+            exit 0
+          fi
+          git commit -m "linear-tui ${TAG}"
+          git push

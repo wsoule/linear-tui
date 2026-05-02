@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
 import type { KeyEvent } from "@opentui/core"
+import { isRecord, readJsonConfig, writeJsonConfig } from "./config-files"
 
 export const KEY_COMMANDS = [
   { key: "globalHelp", label: "Toggle help" },
@@ -39,14 +38,28 @@ export const defaultKeybindings: Keybindings = {
   issueSwitchBranch: "B",
 }
 
-function keybindingsPath(): string | null {
-  const home = process.env.HOME
-  if (!home) return null
-  return join(home, ".config", "linear-tui", "keybindings.json")
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+const shiftedSymbolBase: Record<string, string> = {
+  "~": "`",
+  "!": "1",
+  "@": "2",
+  "#": "3",
+  "$": "4",
+  "%": "5",
+  "^": "6",
+  "&": "7",
+  "*": "8",
+  "(": "9",
+  ")": "0",
+  "_": "-",
+  "+": "=",
+  "{": "[",
+  "}": "]",
+  "|": "\\",
+  ":": ";",
+  "\"": "'",
+  "<": ",",
+  ">": ".",
+  "?": "/",
 }
 
 export function commandLabel(command: KeyCommand): string {
@@ -54,35 +67,21 @@ export function commandLabel(command: KeyCommand): string {
 }
 
 export function loadKeybindings(): Keybindings {
-  const path = keybindingsPath()
-  if (!path || !existsSync(path)) return defaultKeybindings
+  const parsed = readJsonConfig("keybindings.json")
+  if (!isRecord(parsed)) return defaultKeybindings
 
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8"))
-    if (!isRecord(parsed)) return defaultKeybindings
-    const next = { ...defaultKeybindings }
-    for (const command of KEY_COMMANDS) {
-      const value = parsed[command.key]
-      if (typeof value === "string" && value.trim()) {
-        next[command.key] = value.trim()
-      }
+  const next = { ...defaultKeybindings }
+  for (const command of KEY_COMMANDS) {
+    const value = parsed[command.key]
+    if (typeof value === "string" && value.trim()) {
+      next[command.key] = value.trim()
     }
-    return next
-  } catch {
-    return defaultKeybindings
   }
+  return next
 }
 
 export function saveKeybindings(keybindings: Keybindings): void {
-  const path = keybindingsPath()
-  if (!path) return
-
-  try {
-    mkdirSync(dirname(path), { recursive: true })
-    writeFileSync(path, `${JSON.stringify(keybindings, null, 2)}\n`)
-  } catch {
-    // Keybindings are user convenience state; failed persistence should not break the TUI.
-  }
+  writeJsonConfig("keybindings.json", keybindings)
 }
 
 export function matchesKeyBinding(key: KeyEvent, binding: string): boolean {
@@ -91,12 +90,25 @@ export function matchesKeyBinding(key: KeyEvent, binding: string): boolean {
 
   const keyToken = parts[parts.length - 1]!
   const modifiers = new Set(parts.slice(0, -1).map((part) => part.toLowerCase()))
-  if (modifiers.has("ctrl") && !key.ctrl) return false
-  if ((modifiers.has("alt") || modifiers.has("meta")) && !key.meta) return false
+  const expectsCtrl = modifiers.has("ctrl")
+  const expectsMeta = modifiers.has("alt") || modifiers.has("meta")
+  if (expectsCtrl !== key.ctrl) return false
+  if (expectsMeta !== key.meta) return false
 
-  const wantsShift = modifiers.has("shift") || keyToken.length === 1 && keyToken === keyToken.toUpperCase() && keyToken !== keyToken.toLowerCase()
-  if (wantsShift) {
-    return key.name === keyToken || key.name.toLowerCase() === keyToken.toLowerCase() && key.shift
+  const isSingleAlpha = /^[a-z]$/i.test(keyToken)
+  if (isSingleAlpha) {
+    const expectsShift =
+      modifiers.has("shift") ||
+      keyToken === keyToken.toUpperCase() && keyToken !== keyToken.toLowerCase()
+    const sameKey = key.name.toLowerCase() === keyToken.toLowerCase()
+    if (!sameKey) return false
+    if (expectsShift) return key.shift || key.name === keyToken
+    return !key.shift && key.name === keyToken.toLowerCase()
   }
-  return key.name === keyToken
+
+  const shiftedBase = shiftedSymbolBase[keyToken]
+  const matchesToken = key.name === keyToken || key.sequence === keyToken || key.raw === keyToken
+  if (shiftedBase) return matchesToken || key.shift && key.name === shiftedBase
+  if (modifiers.has("shift")) return key.shift && matchesToken
+  return !key.shift && matchesToken
 }

@@ -10,7 +10,7 @@ const ITEMS: { view: View; label: string; key: string }[] = [
 ]
 
 export function Sidebar() {
-  const { view, selectedIssueId } = useStore()
+  const { view, selectedIssueId, keybindings } = useStore()
   const activeView = selectedIssueId ? null : view
 
   return (
@@ -42,8 +42,9 @@ export function Sidebar() {
         )
       })}
       <text fg={theme.fgMuted}> </text>
-      <text fg={theme.fgMuted}> n  new issue</text>
-      <text fg={theme.fgMuted}> ?  help</text>
+      <text fg={theme.fgMuted}>{` ${keybindings.globalNewIssue}  new issue`}</text>
+      <text fg={theme.fgMuted}>{` ${keybindings.globalSettings}  settings`}</text>
+      <text fg={theme.fgMuted}>{` ${keybindings.globalHelp}  help`}</text>
       <text fg={theme.fgMuted}> q  quit</text>
     </box>
   )

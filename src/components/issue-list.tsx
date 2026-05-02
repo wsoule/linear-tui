@@ -115,7 +115,9 @@ function issueItems(rows: IssueRow[], groupBy: IssueGroupBy, orderBy: IssueOrder
   const groups = new Map<string, IssueRow[]>()
   for (const row of rows) {
     const key = groupValue(row, groupBy)
-    groups.set(key, [...(groups.get(key) ?? []), row])
+    const groupRows = groups.get(key)
+    if (groupRows) groupRows.push(row)
+    else groups.set(key, [row])
   }
 
   return [...groups.entries()].flatMap(([label, groupRows]) => [

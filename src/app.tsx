@@ -31,13 +31,6 @@ function Shell() {
   } = useStore()
 
   const inSearchView = view === "search" && !selectedIssueId
-  const inIssueListView =
-    !selectedIssueId &&
-    (view === "my-issues" ||
-      view === "inbox" ||
-      view === "cycles" ||
-      (view === "projects" && selectedProjectId !== null) ||
-      view === "search")
 
   useKeyboard((key) => {
     if (helpVisible) {
@@ -54,6 +47,11 @@ function Shell() {
 
     if (matchesKeyBinding(key, keybindings.globalSettings)) {
       setModal({ type: "settings" })
+      return
+    }
+
+    if (!inSearchView && matchesKeyBinding(key, keybindings.globalNewIssue)) {
+      setModal({ type: "new-issue" })
       return
     }
 
@@ -78,10 +76,6 @@ function Shell() {
       case "p": setView("projects"); break
       case "c": setView("cycles"); break
       case "/": setView("search"); break
-    }
-
-    if (!inIssueListView && matchesKeyBinding(key, keybindings.globalNewIssue)) {
-      setModal({ type: "new-issue" })
     }
   })
 

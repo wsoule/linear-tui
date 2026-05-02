@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in
+    /*) ;;
+    *) SOURCE="$DIR/$SOURCE" ;;
+  esac
+done
+
+DIR="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
+
+case "${1:-}" in
+  --help|-h)
+    printf "Usage: linear-tui\n\n"
+    printf "Environment:\n"
+    printf "  LINEAR_API_KEY  Linear personal API key\n"
+    exit 0
+    ;;
+  --version|-v)
+    exec bun -e "const pkg = await Bun.file('$DIR/package.json').json(); console.log(pkg.version)"
+    ;;
+esac
+
+exec bun run "$DIR/src/index.tsx" "$@"

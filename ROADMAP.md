@@ -55,7 +55,7 @@ This is the part that earns the TUI its keep over the web app.
  - **Ordering** - DONE: `ctrl+o` opens saved ordering; grouped lists sort issues inside each group.
  - copy branch name to clipboard - DONE. Defaults to `y`; `B` switches/creates the suggested branch.
  - **Keybinding settings** - DONE: `,` opens settings, keybindings persist to `~/.config/linear-tui/keybindings.json`.
- - this bug: 36rissuesycle
+ - rendering bug: `36rissuesycle` - FIXED by rendering dynamic list header rows at full width so shorter updates clear old text.
 
 
 ## Known gotchas to keep in mind

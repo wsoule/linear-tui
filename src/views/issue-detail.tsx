@@ -73,9 +73,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
       case "pageup":
         sb.scrollBy(-1, "viewport"); break
       case "g":
-        sb.scrollTo({ x: 0, y: 0 }); break
-      case "G":
-        sb.scrollTo({ x: 0, y: Number.MAX_SAFE_INTEGER }); break
+        sb.scrollTo({ x: 0, y: key.shift ? Number.MAX_SAFE_INTEGER : 0 }); break
     }
   })
 

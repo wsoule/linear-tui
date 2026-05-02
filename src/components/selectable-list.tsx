@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core"
 import { theme } from "../theme"
+import { TextLine } from "./text-line"
 
 type Props<T> = {
   title: string
@@ -93,9 +94,10 @@ export function SelectableList<T>({
       case "up":
         setIndex((i) => nextSelectableIndex(items, i, -1)); break
       case "g":
-        if (!key.ctrl && !key.meta) setIndex(firstSelectableIndex(items)); break
-      case "G":
-        setIndex(lastSelectableIndex(items)); break
+        if (!key.ctrl && !key.meta) {
+          setIndex(key.shift ? lastSelectableIndex(items) : firstSelectableIndex(items))
+        }
+        break
       case "return":
       case "l":
         onSelect(selectedItem); break
@@ -104,17 +106,17 @@ export function SelectableList<T>({
 
   return (
     <box style={{ flexDirection: "column", flexGrow: 1, padding: 1 }}>
-      <text fg={theme.fg} attributes={1}>{title}</text>
-      <text fg={theme.fgMuted}>
+      <TextLine fg={theme.fg} attributes={1}>{title}</TextLine>
+      <TextLine fg={theme.fgMuted}>
         {subtitle ?? (items ? `${items.length} items` : "no local data yet")}
-      </text>
-      <text fg={theme.fgMuted}> </text>
+      </TextLine>
+      <TextLine fg={theme.fgMuted}> </TextLine>
       {error ? (
-        <text fg={theme.danger}>error: {error}</text>
+        <TextLine fg={theme.danger}>error: {error}</TextLine>
       ) : !items ? (
-        <text fg={theme.fgDim}>no cached rows yet</text>
+        <TextLine fg={theme.fgDim}>no cached rows yet</TextLine>
       ) : items.length === 0 ? (
-        <text fg={theme.fgDim}>{emptyText}</text>
+        <TextLine fg={theme.fgDim}>{emptyText}</TextLine>
       ) : (
         <scrollbox ref={scrollRef} style={{ flexGrow: 1 }} stickyScroll={false}>
           {items.map((item, i) => {
@@ -126,6 +128,7 @@ export function SelectableList<T>({
                 key={id}
                 id={`row-${id}`}
                 style={{
+                  width: "100%",
                   flexDirection: "row",
                   backgroundColor: selected ? theme.bgSelected : theme.bg,
                   paddingLeft: 1,

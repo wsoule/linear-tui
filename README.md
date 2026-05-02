@@ -1,0 +1,71 @@
+# linear-tui
+
+A keyboard-first Linear client for the terminal, built with Bun, React, OpenTUI, and the Linear SDK.
+This is in no way affiliated with Linear, Inc.
+I love linear, I just wanted it in a tui for some reason.
+
+## Setup
+
+```sh
+bun install
+cp .env.example .env
+```
+
+Create a personal API key in Linear from [Settings > Account > Security & Access](https://linear.app/settings/account/security), then set `LINEAR_API_KEY` in `.env`. Linear documents API keys in [API and Webhooks](https://linear.app/docs/api-and-webhooks).
+
+Run:
+
+```sh
+bun run start
+```
+
+## Homebrew
+
+```sh
+brew install oven-sh/bun/bun
+brew tap wsoule/tap
+brew install linear-tui
+```
+
+For development:
+
+```sh
+bun run dev
+```
+
+## Keybindings
+
+Defaults:
+
+- `m`, `i`, `p`, `c`, `/` switch views.
+- `j`/`k`, arrows, `g`, `G`, `enter`, and `esc` navigate.
+- `s`, `a`, `c`, and `n` update the selected issue.
+- `y` copies the branch name, `Y` copies the issue id, and `B` switches to the branch.
+- `f`, `ctrl+g`, and `ctrl+o` edit saved list filtering, grouping, and ordering.
+- `,` opens settings, `?` opens help, and `q` quits.
+
+Keybindings are stored in `~/.config/linear-tui/keybindings.json`.
+
+## Configuration
+
+Viewing preferences are stored in `~/.config/linear-tui/viewing.json`.
+
+Theme overrides can be placed at `~/.config/linear-tui/theme.json`:
+
+```json
+{
+  "accent": "#5e6ad2",
+  "bg": "#0e0e10",
+  "bgPanel": "#16161a"
+}
+```
+
+## Verification
+
+```sh
+bun run typecheck
+```
+
+## Release
+
+Tags matching `v*` trigger `.github/workflows/homebrew-tap.yml`, which updates `wsoule/homebrew-tap`. Add a `HOMEBREW_TAP_TOKEN` repository secret with write access to the tap before tagging releases.

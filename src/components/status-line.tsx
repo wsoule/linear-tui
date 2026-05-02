@@ -49,6 +49,7 @@ export function StatusLine() {
   return (
     <box
       style={{
+        width: "100%",
         height: 1,
         flexDirection: "row",
         backgroundColor: theme.bgPanel,
@@ -69,6 +70,7 @@ export function StatusLine() {
       <text fg={activity.pending > 0 ? theme.accent : theme.fgMuted}>{syncText}</text>
       <text fg={theme.fgMuted}>  ·  </text>
       <text fg={activity.lastError ? theme.danger : theme.fgMuted}>{errorText}</text>
+      <text fg={theme.fgMuted} style={{ flexGrow: 1 }}> </text>
     </box>
   )
 }

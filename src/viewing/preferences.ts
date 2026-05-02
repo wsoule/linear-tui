@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { isRecord, readJsonConfig, writeJsonConfig } from "../config-files"
 
 export const GROUP_OPTIONS = [
   { key: "none", label: "None" },
@@ -34,16 +33,6 @@ export const defaultViewingPreferences: ViewingPreferences = {
   orderBy: "none",
 }
 
-function preferencesPath(): string | null {
-  const home = process.env.HOME
-  if (!home) return null
-  return join(home, ".config", "linear-tui", "viewing.json")
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 export function isIssueGroupBy(value: unknown): value is IssueGroupBy {
   return typeof value === "string" && GROUP_OPTIONS.some((option) => option.key === value)
 }
@@ -61,30 +50,16 @@ export function orderByLabel(orderBy: IssueOrderBy): string {
 }
 
 export function loadViewingPreferences(): ViewingPreferences {
-  const path = preferencesPath()
-  if (!path || !existsSync(path)) return defaultViewingPreferences
+  const parsed = readJsonConfig("viewing.json")
+  if (!isRecord(parsed)) return defaultViewingPreferences
 
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8"))
-    if (!isRecord(parsed)) return defaultViewingPreferences
-    return {
-      filter: typeof parsed.filter === "string" ? parsed.filter : "",
-      groupBy: isIssueGroupBy(parsed.groupBy) ? parsed.groupBy : "none",
-      orderBy: isIssueOrderBy(parsed.orderBy) ? parsed.orderBy : "none",
-    }
-  } catch {
-    return defaultViewingPreferences
+  return {
+    filter: typeof parsed.filter === "string" ? parsed.filter : "",
+    groupBy: isIssueGroupBy(parsed.groupBy) ? parsed.groupBy : "none",
+    orderBy: isIssueOrderBy(parsed.orderBy) ? parsed.orderBy : "none",
   }
 }
 
 export function saveViewingPreferences(preferences: ViewingPreferences): void {
-  const path = preferencesPath()
-  if (!path) return
-
-  try {
-    mkdirSync(dirname(path), { recursive: true })
-    writeFileSync(path, `${JSON.stringify(preferences, null, 2)}\n`)
-  } catch {
-    // Viewing preferences are convenience state; failing to persist them should not break the TUI.
-  }
+  writeJsonConfig("viewing.json", preferences)
 }
