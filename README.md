@@ -1,4 +1,5 @@
 
+
 # linear-tui
 
 A keyboard-first Linear client for the terminal, built with Bun, React, OpenTUI, and the Linear SDK.
@@ -8,6 +9,9 @@ This is in no way affiliated with Linear, Inc.
 I love linear, I just wanted it in a tui for some reason.
 
 <img width="1768" height="1028" alt="Screenshot 2026-05-02 at 11 06 24" src="https://github.com/user-attachments/assets/f0e34640-4d22-4dc6-b148-45b25aef0bbc" />
+
+View Current Cycle, Group by assignee, order by status.
+<img width="1760" height="1037" alt="Screenshot 2026-05-02 at 11 56 26" src="https://github.com/user-attachments/assets/032af3b4-6ac7-4d91-81fc-bd2687024537" />
 
 ## Setup
 
