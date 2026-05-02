@@ -3,7 +3,7 @@ import { getActivitySnapshot, subscribeActivity } from "../linear/activity"
 import { getViewer, VIEWER_KEY } from "../linear/queries"
 import { useCachedQuery } from "../linear/use-query"
 import { useStore, type View } from "../state/store"
-import { groupByLabel, orderByLabel } from "../viewing/preferences"
+import { groupByLabel, orderByLabel, statusFilterLabel } from "../viewing/preferences"
 import { theme } from "../theme"
 
 const viewLabels: Record<View, string> = {
@@ -41,6 +41,7 @@ export function StatusLine() {
   const filter = viewingPreferences.filter.trim()
   const viewingText = [
     filter ? `filter ${ellipsize(filter, 24)}` : null,
+    viewingPreferences.statusFilter ? `status ${statusFilterLabel(viewingPreferences.statusFilter)}` : null,
     viewingPreferences.groupBy !== "none" ? `group ${groupByLabel(viewingPreferences.groupBy)}` : null,
     viewingPreferences.orderBy !== "none" ? `order ${orderByLabel(viewingPreferences.orderBy)}` : null,
   ].filter(Boolean).join(" · ")

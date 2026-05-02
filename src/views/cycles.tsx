@@ -75,6 +75,7 @@ export function Cycles({ active }: { active: boolean }) {
       error={cycleError ?? issuesError}
       active={active}
       emptyText={selectedCycle ? "no issues in this cycle" : "no cycles"}
+      cycle={selectedCycle}
     />
   )
 }

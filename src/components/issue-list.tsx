@@ -1,13 +1,15 @@
 import { useMemo } from "react"
 import { useKeyboard } from "@opentui/react"
+import type { Cycle } from "@linear/sdk"
 import { primeIssueDetail, type IssueRow } from "../linear/queries"
 import { SelectableList } from "./selectable-list"
 import { StatusBadge } from "./status-badge"
-import { useStore } from "../state/store"
+import { useStore, type StatusFilterOption } from "../state/store"
 import { targetFromRow, useIssueActions } from "./issue-actions"
 import {
   groupByLabel,
   orderByLabel,
+  statusFilterLabel,
   type IssueGroupBy,
   type IssueOrderBy,
 } from "../viewing/preferences"
@@ -21,11 +23,14 @@ type Props = {
   error: string | null
   active: boolean
   emptyText?: string
+  cycle?: Cycle | null
 }
 
 type IssueListItem =
   | { type: "group"; id: string; label: string; count: number }
   | { type: "issue"; row: IssueRow }
+
+const NO_STATUS_FILTER = "__none__"
 
 function issueSearchText(row: IssueRow): string {
   return [
@@ -43,10 +48,36 @@ function issueSearchText(row: IssueRow): string {
     .toLowerCase()
 }
 
-function filterRows(rows: IssueRow[], filter: string): IssueRow[] {
+function statusMatches(row: IssueRow, statusFilter: string): boolean {
+  if (!statusFilter) return true
+  if (statusFilter === NO_STATUS_FILTER) return !row.state
+  return row.state?.name === statusFilter || row.state?.type === statusFilter
+}
+
+function filterRows(rows: IssueRow[], filter: string, statusFilter: string): IssueRow[] {
   const needle = filter.trim().toLowerCase()
-  if (!needle) return rows
-  return rows.filter((row) => issueSearchText(row).includes(needle))
+  return rows.filter((row) => {
+    if (!statusMatches(row, statusFilter)) return false
+    if (!needle) return true
+    return issueSearchText(row).includes(needle)
+  })
+}
+
+function statusOptions(rows: IssueRow[] | null): StatusFilterOption[] {
+  if (!rows) return []
+  const seen = new Set<string>()
+  const options: StatusFilterOption[] = []
+  for (const row of rows) {
+    const value = row.state?.name ?? NO_STATUS_FILTER
+    if (seen.has(value)) continue
+    seen.add(value)
+    options.push({
+      label: row.state?.name ?? "No status",
+      value,
+      description: row.state?.type ?? "",
+    })
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label))
 }
 
 function groupValue(row: IssueRow, groupBy: IssueGroupBy): string {
@@ -126,13 +157,14 @@ function issueItems(rows: IssueRow[], groupBy: IssueGroupBy, orderBy: IssueOrder
   ])
 }
 
-export function IssueList({ title, subtitle, rows, error, active, emptyText }: Props) {
+export function IssueList({ title, subtitle, rows, error, active, emptyText, cycle }: Props) {
   const { setSelectedIssueId, setModal, viewingPreferences, keybindings } = useStore()
   const { handleIssueKey } = useIssueActions()
   const filteredRows = useMemo(
-    () => rows ? filterRows(rows, viewingPreferences.filter) : null,
-    [rows, viewingPreferences.filter],
+    () => rows ? filterRows(rows, viewingPreferences.filter, viewingPreferences.statusFilter) : null,
+    [rows, viewingPreferences.filter, viewingPreferences.statusFilter],
   )
+  const statuses = useMemo(() => statusOptions(rows), [rows])
   const items = useMemo(
     () => filteredRows ? issueItems(filteredRows, viewingPreferences.groupBy, viewingPreferences.orderBy) : null,
     [filteredRows, viewingPreferences.groupBy, viewingPreferences.orderBy],
@@ -142,6 +174,10 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
     if (!active) return
     if (matchesKeyBinding(key, keybindings.viewFilter)) {
       setModal({ type: "filter" })
+      return
+    }
+    if (matchesKeyBinding(key, keybindings.viewStatusFilter)) {
+      setModal({ type: "status-filter", statuses })
       return
     }
     if (matchesKeyBinding(key, keybindings.viewGroup)) {
@@ -154,16 +190,18 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
   })
 
   const filterActive = Boolean(viewingPreferences.filter.trim())
+  const statusFilterActive = Boolean(viewingPreferences.statusFilter)
   const groupActive = viewingPreferences.groupBy !== "none"
   const orderActive = viewingPreferences.orderBy !== "none"
   const countText = rows
-    ? filterActive
+    ? filterActive || statusFilterActive
       ? `${filteredRows?.length ?? 0}/${rows.length} issues`
       : `${rows.length} issues`
     : undefined
   const controls = [
     countText,
     filterActive ? `filter: ${viewingPreferences.filter.trim()}` : null,
+    statusFilterActive ? `status: ${statusFilterLabel(viewingPreferences.statusFilter)}` : null,
     groupActive ? `group: ${groupByLabel(viewingPreferences.groupBy)}` : null,
     orderActive ? `order: ${orderByLabel(viewingPreferences.orderBy)}` : null,
   ].filter(Boolean).join(" · ")
@@ -180,17 +218,17 @@ export function IssueList({ title, subtitle, rows, error, active, emptyText }: P
       items={items}
       error={error}
       active={active}
-      emptyText={filterActive ? "no issues match filter" : emptyText}
+      emptyText={filterActive || statusFilterActive ? "no issues match filter" : emptyText}
       getId={(item) => item.type === "group" ? item.id : item.row.issue.id}
       isSelectable={(item) => item.type === "issue"}
       onSelect={(item) => {
         if (item.type !== "issue") return
-        primeIssueDetail(item.row)
+        primeIssueDetail(item.row, cycle)
         setSelectedIssueId(item.row.issue.id)
       }}
       onKey={(key, item) => {
         if (item.type !== "issue") return false
-        return handleIssueKey(key, targetFromRow(item.row))
+        return handleIssueKey(key, targetFromRow(item.row, cycle))
       }}
       renderRow={(item) => item.type === "group" ? (
         <box style={{ flexDirection: "row" }}>

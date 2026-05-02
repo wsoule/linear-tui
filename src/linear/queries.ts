@@ -56,6 +56,7 @@ type CreateIssueInput = {
   description?: string
   priority?: number
   parentId?: string
+  cycleId?: string
 }
 
 export async function enrichIssue(issue: Issue): Promise<IssueRow> {
@@ -363,12 +364,12 @@ export function rememberIssueDetail(detail: IssueDetailData): void {
   remember(issueDetailKey(detail.issue.id), detail)
 }
 
-export function primeIssueDetail(row: IssueRow): void {
+export function primeIssueDetail(row: IssueRow, cycle?: Cycle | null): void {
   const key = issueDetailKey(row.issue.id)
   if (peekStale<IssueDetailData>(key)) return
   rememberIssueDetail({
     ...row,
-    cycle: undefined,
+    cycle: cycle ?? undefined,
     comments: [],
     children: [],
     relations: [],
@@ -389,16 +390,25 @@ export function appendCommentCache(
   return () => remember(issueDetailKey(issueId), current)
 }
 
-export function addIssueRowToCaches(row: IssueRow): void {
+export function addIssueRowToCaches(row: IssueRow, cycleId = row.issue.cycleId): void {
+  const prepend = (rows: IssueRow[]) => [
+    row,
+    ...rows.filter((current) => current.issue.id !== row.issue.id),
+  ]
+
   const allIssues = peekStale<IssueRow[]>(ISSUES_KEY)
-  if (allIssues) remember(ISSUES_KEY, [row, ...allIssues])
+  if (allIssues) remember(ISSUES_KEY, prepend(allIssues))
   if (row.state?.type === "triage") {
     const triageIssues = peekStale<IssueRow[]>(TRIAGE_KEY)
-    if (triageIssues) remember(TRIAGE_KEY, [row, ...triageIssues])
+    if (triageIssues) remember(TRIAGE_KEY, prepend(triageIssues))
+  }
+  if (cycleId) {
+    const cycleIssues = peekStale<IssueRow[]>(cycleIssuesKey(cycleId))
+    if (cycleIssues) remember(cycleIssuesKey(cycleId), prepend(cycleIssues))
   }
   if (row.assignee?.isMe) {
     const current = peekStale<IssueRow[]>(MY_ISSUES_KEY)
-    if (current) remember(MY_ISSUES_KEY, [row, ...current])
+    if (current) remember(MY_ISSUES_KEY, prepend(current))
   }
   primeIssueDetail(row)
 }
@@ -463,7 +473,7 @@ export async function createIssue(input: CreateIssueInput): Promise<IssueRow> {
     const issue = await payload.issue
     if (!issue) throw new Error("Linear did not return the created issue")
     const row = await enrichIssue(issue)
-    addIssueRowToCaches(row)
+    addIssueRowToCaches(row, input.cycleId)
     return row
   })
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { Cycle, Issue, Team, User, WorkflowState } from "@linear/sdk"
 import type { InputRenderable, TextareaRenderable } from "@opentui/core"
-import { useStore, type IssueTarget, type Toast } from "../state/store"
+import { useStore, type IssueTarget, type StatusFilterOption, type Toast } from "../state/store"
 import { KEY_COMMANDS, commandLabel, type KeyCommand } from "../keybindings"
 import {
   appendCommentCache,
@@ -33,6 +33,7 @@ import {
   ORDER_OPTIONS,
   groupByLabel,
   orderByLabel,
+  statusFilterLabel,
   type IssueGroupBy,
   type IssueOrderBy,
 } from "../viewing/preferences"
@@ -413,6 +414,7 @@ function optimisticIssue(
   description: string,
   priority: number,
   parentId?: string,
+  cycleId?: string,
 ): Issue {
   return {
     id,
@@ -424,6 +426,7 @@ function optimisticIssue(
     url: "",
     teamId: team.id,
     parentId,
+    cycleId,
   } as Issue
 }
 
@@ -440,6 +443,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState(0)
   const descriptionRef = useRef<TextareaRenderable | null>(null)
+  const cycle = parent?.cycle ?? null
 
   useEffect(() => {
     if (!parent || team || !teams) return
@@ -451,19 +455,21 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
   const submit = (selectedPriority: number) => {
     if (!team || !title.trim()) return
     const id = crypto.randomUUID()
+    const issue = optimisticIssue(
+      id,
+      team,
+      title.trim(),
+      description,
+      selectedPriority,
+      parent?.issueId,
+      cycle?.id,
+    )
     rememberIssueDetail({
-      issue: optimisticIssue(
-        id,
-        team,
-        title.trim(),
-        description,
-        selectedPriority,
-        parent?.issueId,
-      ),
+      issue,
       state: undefined,
       assignee: undefined,
       team,
-      cycle: undefined,
+      cycle: cycle ?? undefined,
       comments: [],
       children: [],
       relations: [],
@@ -479,6 +485,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       description: description || undefined,
       priority: selectedPriority,
       parentId: parent?.issueId,
+      cycleId: cycle?.id,
     })
       .then((row) => {
         if (row.issue.id !== id) invalidate(issueDetailKey(id))
@@ -511,7 +518,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       <text fg={theme.accent} attributes={1}>{parent ? "New Sub-issue" : "New Issue"}</text>
       <text fg={theme.fgMuted}>
         {parent
-          ? `${parent.identifier}  ${step === "title" ? "enter title" : step === "description" ? "description · ctrl+enter next" : step === "priority" ? "choose priority" : "choose team"}`
+          ? `${parent.identifier}${cycle ? ` -> ${cycleLabel(cycle)}` : ""}  ${step === "title" ? "enter title" : step === "description" ? "description · ctrl+enter next" : step === "priority" ? "choose priority" : "choose team"}`
           : step === "team"
           ? "choose team"
           : step === "title"
@@ -647,6 +654,49 @@ function FilterModal() {
           style={{ flexGrow: 1 }}
         />
       </box>
+    </ModalFrame>
+  )
+}
+
+function StatusFilterModal({ statuses }: { statuses: StatusFilterOption[] }) {
+  useModalEscape()
+  const { setModal, viewingPreferences, setViewingPreferences, addToast } = useStore()
+  const options = [
+    { label: "All statuses", value: "", description: "" },
+    ...statuses,
+  ]
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((option) => option.value === viewingPreferences.statusFilter),
+  )
+
+  const choose = (statusFilter: string) => {
+    setViewingPreferences((current) => ({ ...current, statusFilter }))
+    setModal(null)
+    addToast(
+      statusFilter ? `saved status filter: ${statusFilterLabel(statusFilter)}` : "status filter cleared",
+      "success",
+    )
+  }
+
+  return (
+    <ModalFrame title="Filter Status" subtitle="saved for every issue list">
+      <select
+        focused
+        width={48}
+        height={Math.min(12, Math.max(3, options.length))}
+        showDescription={false}
+        selectedIndex={selectedIndex}
+        selectedBackgroundColor={theme.bgSelected}
+        selectedTextColor={theme.fg}
+        textColor={theme.fgDim}
+        options={options.map((option) => ({
+          name: option.label,
+          description: option.description,
+          value: option.value,
+        }))}
+        onSelect={(_, option) => choose((option?.value as string | undefined) ?? "")}
+      />
     </ModalFrame>
   )
 }
@@ -799,6 +849,7 @@ export function MutationLayer() {
   if (modal.type === "cycle") return <CycleModal target={modal.target} />
   if (modal.type === "comment") return <CommentModal target={modal.target} />
   if (modal.type === "filter") return <FilterModal />
+  if (modal.type === "status-filter") return <StatusFilterModal statuses={modal.statuses} />
   if (modal.type === "group") return <GroupModal />
   if (modal.type === "order") return <OrderModal />
   if (modal.type === "settings") return <SettingsModal />

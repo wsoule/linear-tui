@@ -23,14 +23,22 @@ export type IssueOrderBy = typeof ORDER_OPTIONS[number]["key"]
 
 export type ViewingPreferences = {
   filter: string
+  statusFilter: string
   groupBy: IssueGroupBy
   orderBy: IssueOrderBy
 }
 
 export const defaultViewingPreferences: ViewingPreferences = {
   filter: "",
+  statusFilter: "",
   groupBy: "none",
   orderBy: "none",
+}
+
+export function statusFilterLabel(statusFilter: string): string {
+  if (!statusFilter) return "All statuses"
+  if (statusFilter === "__none__") return "No status"
+  return statusFilter
 }
 
 export function isIssueGroupBy(value: unknown): value is IssueGroupBy {
@@ -55,6 +63,7 @@ export function loadViewingPreferences(): ViewingPreferences {
 
   return {
     filter: typeof parsed.filter === "string" ? parsed.filter : "",
+    statusFilter: typeof parsed.statusFilter === "string" ? parsed.statusFilter : "",
     groupBy: isIssueGroupBy(parsed.groupBy) ? parsed.groupBy : "none",
     orderBy: isIssueOrderBy(parsed.orderBy) ? parsed.orderBy : "none",
   }

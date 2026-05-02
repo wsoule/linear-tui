@@ -40,6 +40,7 @@ export function Help() {
         [keybindings.issueCopyId, "copy issue id"],
         [keybindings.issueSwitchBranch, "switch branch"],
         [keybindings.viewFilter, "filter issues"],
+        [keybindings.viewStatusFilter, "filter by status"],
         [keybindings.viewGroup, "group issues"],
         [keybindings.viewOrder, "order issues"],
       ],

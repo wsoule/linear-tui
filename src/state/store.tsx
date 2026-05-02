@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
+import type { Cycle } from "@linear/sdk"
 import {
   loadKeybindings,
   saveKeybindings,
@@ -19,6 +20,13 @@ export type IssueTarget = {
   url: string
   teamId: string | null
   branchName: string
+  cycle?: Cycle | null
+}
+
+export type StatusFilterOption = {
+  label: string
+  value: string
+  description: string
 }
 
 export type Modal =
@@ -29,6 +37,7 @@ export type Modal =
   | { type: "cycle"; target: IssueTarget }
   | { type: "new-issue"; parent?: IssueTarget }
   | { type: "filter" }
+  | { type: "status-filter"; statuses: StatusFilterOption[] }
   | { type: "group" }
   | { type: "order" }
   | { type: "settings" }

@@ -1,5 +1,6 @@
 import { useRenderer } from "@opentui/react"
 import type { KeyEvent } from "@opentui/core"
+import type { Cycle } from "@linear/sdk"
 import type { IssueTarget } from "../state/store"
 import { useStore } from "../state/store"
 import type { IssueDetailData, IssueRow } from "../linear/queries"
@@ -19,7 +20,7 @@ function branchName(identifier: string, title: string, linearBranchName?: string
   return titleSlug ? `${identifier.toLowerCase()}-${titleSlug}` : identifier.toLowerCase()
 }
 
-export function targetFromRow(row: IssueRow): IssueTarget {
+export function targetFromRow(row: IssueRow, cycle?: Cycle | null): IssueTarget {
   return {
     issueId: row.issue.id,
     identifier: row.issue.identifier,
@@ -27,6 +28,7 @@ export function targetFromRow(row: IssueRow): IssueTarget {
     url: row.issue.url,
     teamId: row.team?.id ?? row.issue.teamId ?? null,
     branchName: branchName(row.issue.identifier, row.issue.title, row.issue.branchName),
+    cycle,
   }
 }
 
@@ -38,6 +40,7 @@ export function targetFromDetail(detail: IssueDetailData): IssueTarget {
     url: detail.issue.url,
     teamId: detail.team?.id ?? detail.issue.teamId ?? null,
     branchName: branchName(detail.issue.identifier, detail.issue.title, detail.issue.branchName),
+    cycle: detail.cycle,
   }
 }
 
