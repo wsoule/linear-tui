@@ -3,6 +3,8 @@ import { theme } from "../theme"
 
 const ITEMS: { view: View; label: string; key: string }[] = [
   { view: "my-issues", label: "My Issues", key: "m" },
+  { view: "issues", label: "Issues", key: "x" },
+  { view: "triage", label: "Triage", key: "t" },
   { view: "inbox", label: "Inbox", key: "i" },
   { view: "projects", label: "Projects", key: "p" },
   { view: "cycles", label: "Cycles", key: "c" },

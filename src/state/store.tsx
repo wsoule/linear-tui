@@ -11,7 +11,7 @@ import {
   type ViewingPreferences,
 } from "../viewing/preferences"
 
-export type View = "my-issues" | "inbox" | "projects" | "cycles" | "search"
+export type View = "my-issues" | "issues" | "triage" | "inbox" | "projects" | "cycles" | "search"
 export type IssueTarget = {
   issueId: string
   identifier: string
@@ -25,6 +25,8 @@ export type Modal =
   | { type: "status"; target: IssueTarget }
   | { type: "assignee"; target: IssueTarget }
   | { type: "comment"; target: IssueTarget }
+  | { type: "edit-issue"; target: IssueTarget }
+  | { type: "cycle"; target: IssueTarget }
   | { type: "new-issue"; parent?: IssueTarget }
   | { type: "filter" }
   | { type: "group" }

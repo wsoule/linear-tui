@@ -8,6 +8,8 @@ export function Help() {
       heading: "views",
       rows: [
         ["m", "my issues"],
+        ["x", "issues"],
+        ["t", "triage"],
         ["i", "inbox"],
         ["p", "projects"],
         ["c", "cycles"],
@@ -30,6 +32,8 @@ export function Help() {
       rows: [
         [keybindings.issueStatus, "change status"],
         [keybindings.issueAssign, "reassign"],
+        [keybindings.issueEdit, "edit title/description"],
+        [keybindings.issueCycle, "set cycle"],
         [keybindings.issueNewSubIssue, "new sub-issue"],
         [keybindings.issueOpen, "open in browser"],
         [keybindings.issueCopyBranch, "copy branch"],
@@ -45,6 +49,8 @@ export function Help() {
       rows: [
         [keybindings.issueStatus, "change status"],
         [keybindings.issueAssign, "reassign"],
+        [keybindings.issueEdit, "edit title/description"],
+        [keybindings.issueCycle, "set cycle"],
         [keybindings.issueComment, "comment"],
         [keybindings.issueNewSubIssue, "new sub-issue"],
         [keybindings.issueOpen, "open in browser"],

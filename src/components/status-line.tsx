@@ -8,9 +8,11 @@ import { theme } from "../theme"
 
 const viewLabels: Record<View, string> = {
   "my-issues": "My Issues",
+  issues: "Issues",
+  triage: "Triage",
   inbox: "Inbox",
   projects: "Projects",
-  cycles: "Current Cycle",
+  cycles: "Cycles",
   search: "Search",
 }
 

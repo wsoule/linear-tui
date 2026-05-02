@@ -1,5 +1,6 @@
 import {
   type Attachment,
+  type Cycle,
   type Issue,
   type IssueRelation,
   type User,
@@ -41,6 +42,7 @@ export type IssueDetailData = {
   state: WorkflowState | undefined
   assignee: User | undefined
   team: Team | undefined
+  cycle: Cycle | undefined
   comments: IssueCommentRow[]
   children: IssueRow[]
   relations: IssueRelationRow[]
@@ -72,16 +74,27 @@ async function enrich(issues: Issue[]): Promise<IssueRow[]> {
 }
 
 export const MY_ISSUES_KEY = "my-issues"
+export const ISSUES_KEY = "issues"
+export const TRIAGE_KEY = "triage"
 export const INBOX_KEY = "inbox"
 export const PROJECTS_KEY = "projects"
 export const CYCLE_KEY = "cycle"
+export const CYCLES_KEY = "cycles"
 export const VIEWER_KEY = "viewer"
 export const VIEWER_TEAMS_KEY = "viewer-teams"
 export const issueDetailKey = (id: string) => `issue:${id}`
 export const projectIssuesKey = (id: string) => `project-issues:${id}`
+export const cycleIssuesKey = (id: string) => `cycle-issues:${id}`
 export const searchKey = (q: string) => `search:${q}`
 export const teamStatesKey = (id: string) => `team-states:${id}`
 export const teamMembersKey = (id: string) => `team-members:${id}`
+export const teamCyclesKey = (id: string) => `team-cycles:${id}`
+
+export type CycleViewData = {
+  team: Team | undefined
+  cycles: Cycle[]
+  activeCycleId: string | null
+}
 
 export async function getViewer(): Promise<User> {
   return linear.viewer
@@ -99,6 +112,24 @@ export async function getMyIssues(): Promise<IssueRow[]> {
   return cached(MY_ISSUES_KEY, async () => {
     const me = await linear.viewer
     const conn = await me.assignedIssues({ first: 50 })
+    return enrich(conn.nodes)
+  })
+}
+
+export async function getIssues(): Promise<IssueRow[]> {
+  return cached(ISSUES_KEY, async () => {
+    const conn = await linear.issues({ first: 100, includeArchived: false })
+    return enrich(conn.nodes)
+  })
+}
+
+export async function getTriageIssues(): Promise<IssueRow[]> {
+  return cached(TRIAGE_KEY, async () => {
+    const conn = await linear.issues({
+      first: 100,
+      includeArchived: false,
+      filter: { state: { type: { eq: "triage" } } },
+    })
     return enrich(conn.nodes)
   })
 }
@@ -152,6 +183,39 @@ export async function getCycleIssues(): Promise<IssueRow[]> {
   })
 }
 
+export async function getTeamCycles(teamId: string): Promise<Cycle[]> {
+  return cached(teamCyclesKey(teamId), async () => {
+    const team = await linear.team(teamId)
+    const conn = await team.cycles({ first: 50, includeArchived: false })
+    return conn.nodes.sort((a, b) => a.number - b.number)
+  }, 5 * 60_000)
+}
+
+export async function getViewerCycleData(): Promise<CycleViewData> {
+  return cached(CYCLES_KEY, async () => {
+    const me = await linear.viewer
+    const teams = await me.teams({ first: 1 })
+    const team = teams.nodes[0]
+    if (!team) return { team: undefined, cycles: [], activeCycleId: null }
+    const [cycles, activeCycle] = await Promise.all([
+      getTeamCycles(team.id),
+      team.activeCycle,
+    ])
+    return {
+      team,
+      cycles,
+      activeCycleId: activeCycle?.id ?? cycles.find((cycle) => cycle.isActive)?.id ?? null,
+    }
+  }, 60_000)
+}
+
+export async function getCycleIssuesForCycle(cycle: Cycle): Promise<IssueRow[]> {
+  return cached(cycleIssuesKey(cycle.id), async () => {
+    const conn = await cycle.issues({ first: 100, includeArchived: false })
+    return enrich(conn.nodes)
+  })
+}
+
 export async function searchIssuesQuery(query: string): Promise<IssueRow[]> {
   if (!query.trim()) return []
   return cached(
@@ -166,10 +230,11 @@ export async function searchIssuesQuery(query: string): Promise<IssueRow[]> {
 
 async function loadIssueDetail(id: string): Promise<IssueDetailData> {
   const issue = await linear.issue(id)
-  const [state, assignee, team, comments, children, attachments, relations, inverseRelations] = await Promise.all([
+  const [state, assignee, team, cycle, comments, children, attachments, relations, inverseRelations] = await Promise.all([
     issue.state,
     issue.assignee,
     issue.team,
+    issue.cycle,
     issue.comments({ first: 50 }),
     issue.children({ first: 50 }),
     issue.attachments({ first: 50 }),
@@ -201,6 +266,7 @@ async function loadIssueDetail(id: string): Promise<IssueDetailData> {
     state,
     assignee,
     team,
+    cycle,
     comments: enrichedComments,
     children: enrichedChildren,
     relations: enrichedRelations,
@@ -238,6 +304,7 @@ type IssueCachePatch = {
   issue?: Issue
   state?: WorkflowState
   assignee?: User | null
+  cycle?: Cycle | null
 }
 
 function isIssueRow(value: unknown): value is IssueRow {
@@ -277,6 +344,7 @@ export function patchIssueCaches(issueId: string, patch: IssueCachePatch): () =>
         issue: patch.issue ?? current.issue,
         state: patch.state ?? current.state,
         assignee: "assignee" in patch ? patch.assignee ?? undefined : current.assignee,
+        cycle: "cycle" in patch ? patch.cycle ?? undefined : current.cycle,
       } satisfies IssueDetailData
     }
 
@@ -300,6 +368,7 @@ export function primeIssueDetail(row: IssueRow): void {
   if (peekStale<IssueDetailData>(key)) return
   rememberIssueDetail({
     ...row,
+    cycle: undefined,
     comments: [],
     children: [],
     relations: [],
@@ -321,6 +390,12 @@ export function appendCommentCache(
 }
 
 export function addIssueRowToCaches(row: IssueRow): void {
+  const allIssues = peekStale<IssueRow[]>(ISSUES_KEY)
+  if (allIssues) remember(ISSUES_KEY, [row, ...allIssues])
+  if (row.state?.type === "triage") {
+    const triageIssues = peekStale<IssueRow[]>(TRIAGE_KEY)
+    if (triageIssues) remember(TRIAGE_KEY, [row, ...triageIssues])
+  }
   if (row.assignee?.isMe) {
     const current = peekStale<IssueRow[]>(MY_ISSUES_KEY)
     if (current) remember(MY_ISSUES_KEY, [row, ...current])
@@ -344,6 +419,30 @@ export async function updateIssueAssignee(
 ): Promise<void> {
   await trackRequest(async () => {
     await linear.updateIssue(issueId, { assigneeId: assignee?.id ?? null })
+    await refreshIssueDetail(issueId)
+  })
+}
+
+export async function updateIssueCycle(
+  issueId: string,
+  cycle: Cycle | null,
+): Promise<void> {
+  await trackRequest(async () => {
+    await linear.updateIssue(issueId, { cycleId: cycle?.id ?? null })
+    await refreshIssueDetail(issueId)
+  })
+}
+
+export async function updateIssueText(
+  issueId: string,
+  title: string,
+  description: string,
+): Promise<void> {
+  await trackRequest(async () => {
+    await linear.updateIssue(issueId, {
+      title,
+      description: description || null,
+    })
     await refreshIssueDetail(issueId)
   })
 }

@@ -2,6 +2,8 @@ import { useKeyboard, useRenderer } from "@opentui/react"
 import { Sidebar } from "./components/sidebar"
 import { Help } from "./components/help"
 import { MyIssues } from "./views/my-issues"
+import { Issues } from "./views/issues"
+import { Triage } from "./views/triage"
 import { Inbox } from "./views/inbox"
 import { Projects } from "./views/projects"
 import { Cycles } from "./views/cycles"
@@ -72,6 +74,8 @@ function Shell() {
     switch (key.name) {
       case "q": renderer.destroy(); break
       case "m": setView("my-issues"); break
+      case "x": setView("issues"); break
+      case "t": setView("triage"); break
       case "i": setView("inbox"); break
       case "p": setView("projects"); break
       case "c": setView("cycles"); break
@@ -86,6 +90,10 @@ function Shell() {
     content = <IssueDetail issueId={selectedIssueId} active={!modal && !helpVisible} />
   } else if (view === "my-issues") {
     content = <MyIssues active={listActive} />
+  } else if (view === "issues") {
+    content = <Issues active={listActive} />
+  } else if (view === "triage") {
+    content = <Triage active={listActive} />
   } else if (view === "inbox") {
     content = <Inbox active={listActive} />
   } else if (view === "projects") {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
-import type { Issue, Team, User, WorkflowState } from "@linear/sdk"
-import type { TextareaRenderable } from "@opentui/core"
+import type { Cycle, Issue, Team, User, WorkflowState } from "@linear/sdk"
+import type { InputRenderable, TextareaRenderable } from "@opentui/core"
 import { useStore, type IssueTarget, type Toast } from "../state/store"
 import { KEY_COMMANDS, commandLabel, type KeyCommand } from "../keybindings"
 import {
@@ -9,16 +9,20 @@ import {
   createIssue,
   createIssueComment,
   getIssueDetail,
+  getTeamCycles,
   getTeamMembers,
   getTeamStates,
   getViewerTeams,
   issueDetailKey,
   patchIssueCaches,
   rememberIssueDetail,
+  teamCyclesKey,
   teamMembersKey,
   teamStatesKey,
   updateIssueAssignee,
+  updateIssueCycle,
   updateIssueState,
+  updateIssueText,
   VIEWER_TEAMS_KEY,
   type IssueDetailData,
 } from "../linear/queries"
@@ -44,6 +48,11 @@ const priorities = [
 
 function priorityLabel(priority: number): string {
   return priorities.find((p) => p.value === priority)?.name ?? "No priority"
+}
+
+function cycleLabel(cycle: Cycle | null | undefined): string {
+  if (!cycle) return "No cycle"
+  return cycle.name ? `Cycle ${cycle.number} - ${cycle.name}` : `Cycle ${cycle.number}`
 }
 
 function submittedInputValue(value: unknown): string {
@@ -205,6 +214,152 @@ function AssigneeModal({ target }: { target: IssueTarget }) {
   )
 }
 
+function CycleModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const detail = useTargetDetail(target)
+  const teamId = target.teamId ?? detail.data?.team?.id ?? null
+  const { data: cycles, error } = useCachedQuery<Cycle[]>(
+    teamId ? teamCyclesKey(teamId) : "team-cycles:none",
+    () => teamId ? getTeamCycles(teamId) : Promise.resolve([]),
+  )
+  const currentCycleId = detail.data?.cycle?.id ?? null
+  const selectedIndex = cycles
+    ? Math.max(0, cycles.findIndex((cycle) => cycle.id === currentCycleId) + 1)
+    : 0
+
+  const choose = (cycle: Cycle | null) => {
+    setModal(null)
+    const rollback = patchIssueCaches(target.issueId, { cycle })
+    addToast(`${target.identifier} -> ${cycleLabel(cycle)}`, "info")
+    updateIssueCycle(target.issueId, cycle)
+      .then(() => addToast(`${target.identifier} updated`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame title="Set Cycle" subtitle={`${target.identifier}  ${target.title}`}>
+      {error ? (
+        <text fg={theme.danger}>error: {error}</text>
+      ) : !teamId ? (
+        <text fg={theme.fgDim}>no team available for this issue</text>
+      ) : !cycles ? (
+        <text fg={theme.fgDim}>no cached cycles yet</text>
+      ) : (
+        <select
+          focused
+          width={48}
+          height={Math.min(12, Math.max(3, cycles.length + 1))}
+          showDescription={false}
+          selectedIndex={selectedIndex}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={[
+            { name: "No cycle", description: "", value: null },
+            ...cycles.map((cycle) => ({
+              name: cycleLabel(cycle),
+              description: cycle.isActive ? "active" : cycle.isNext ? "next" : cycle.isPrevious ? "previous" : "",
+              value: cycle,
+            })),
+          ]}
+          onSelect={(_, option) => choose((option?.value as Cycle | null | undefined) ?? null)}
+        />
+      )}
+    </ModalFrame>
+  )
+}
+
+function EditIssueModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const detail = useTargetDetail(target)
+  const [field, setField] = useState<"title" | "description">("title")
+  const titleRef = useRef<InputRenderable | null>(null)
+  const descriptionRef = useRef<TextareaRenderable | null>(null)
+
+  const submit = () => {
+    if (!detail.data) return
+    const title = (titleRef.current?.value ?? detail.data.issue.title).trim()
+    const description = descriptionRef.current?.plainText.trim() ?? detail.data.issue.description ?? ""
+    if (!title) {
+      addToast("title is required", "error")
+      return
+    }
+
+    const nextIssue = {
+      ...detail.data.issue,
+      title,
+      description: description || undefined,
+    } as Issue
+    const rollback = patchIssueCaches(target.issueId, { issue: nextIssue })
+    setModal(null)
+    addToast(`saving ${target.identifier}`, "info")
+    updateIssueText(target.issueId, title, description)
+      .then(() => addToast(`${target.identifier} updated`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame
+      title="Edit Issue"
+      subtitle={field === "title" ? "title · enter next" : "description · ctrl+enter save"}
+      wide
+    >
+      {detail.error ? (
+        <text fg={theme.danger}>error: {detail.error}</text>
+      ) : !detail.data ? (
+        <text fg={theme.fgDim}>no cached issue data yet</text>
+      ) : (
+        <>
+          <box
+            style={{
+              flexDirection: "row",
+              width: "100%",
+              borderStyle: "single",
+              borderColor: field === "title" ? theme.borderActive : theme.border,
+              paddingLeft: 1,
+              paddingRight: 1,
+            }}
+          >
+            <text fg={theme.fgMuted}>title </text>
+            <input
+              ref={titleRef}
+              focused={field === "title"}
+              value={detail.data.issue.title}
+              onSubmit={() => setField("description")}
+              placeholder="Issue title"
+              style={{ flexGrow: 1 }}
+            />
+          </box>
+          <text fg={theme.fgMuted}> </text>
+          <textarea
+            ref={descriptionRef}
+            focused={field === "description"}
+            width={66}
+            height={10}
+            initialValue={detail.data.issue.description ?? ""}
+            placeholder="Issue description..."
+            textColor={theme.fg}
+            focusedTextColor={theme.fg}
+            backgroundColor={theme.bg}
+            focusedBackgroundColor={theme.bg}
+            cursorColor={theme.accent}
+            keyBindings={[{ name: "return", ctrl: true, action: "submit" }]}
+            onSubmit={submit}
+          />
+        </>
+      )}
+    </ModalFrame>
+  )
+}
+
 function CommentModal({ target }: { target: IssueTarget }) {
   useModalEscape()
   const { setModal, addToast } = useStore()
@@ -308,6 +463,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       state: undefined,
       assignee: undefined,
       team,
+      cycle: undefined,
       comments: [],
       children: [],
       relations: [],
@@ -639,6 +795,8 @@ export function MutationLayer() {
   if (!modal) return null
   if (modal.type === "status") return <StatusModal target={modal.target} />
   if (modal.type === "assignee") return <AssigneeModal target={modal.target} />
+  if (modal.type === "edit-issue") return <EditIssueModal target={modal.target} />
+  if (modal.type === "cycle") return <CycleModal target={modal.target} />
   if (modal.type === "comment") return <CommentModal target={modal.target} />
   if (modal.type === "filter") return <FilterModal />
   if (modal.type === "group") return <GroupModal />

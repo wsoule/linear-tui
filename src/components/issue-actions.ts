@@ -138,6 +138,14 @@ export function useIssueActions() {
         setModal({ type: "assignee", target })
         return true
       }
+      if (matchesKeyBinding(key, keybindings.issueEdit)) {
+        setModal({ type: "edit-issue", target })
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issueCycle)) {
+        setModal({ type: "cycle", target })
+        return true
+      }
       if (matchesKeyBinding(key, keybindings.issueOpen)) {
         void openIssue(target)
         return true

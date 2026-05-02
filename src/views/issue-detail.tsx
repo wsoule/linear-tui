@@ -93,7 +93,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
     )
   }
 
-  const { issue, state, assignee, team } = detail
+  const { issue, state, assignee, team, cycle } = detail
   const comments = detail.comments ?? []
   const children = detail.children ?? []
   const relations = detail.relations ?? []
@@ -116,6 +116,10 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
         <text fg={theme.fgMuted}>   priority: </text>
         <text fg={theme.priority[issue.priority] ?? theme.fgDim}>
           {issue.priorityLabel}
+        </text>
+        <text fg={theme.fgMuted}>   cycle: </text>
+        <text fg={theme.fgDim}>
+          {cycle ? cycle.name ? `Cycle ${cycle.number} - ${cycle.name}` : `Cycle ${cycle.number}` : "—"}
         </text>
       </box>
       <text fg={theme.fgMuted}> </text>
@@ -165,7 +169,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
       )}
       <text fg={theme.fgMuted}> </text>
       <text fg={theme.fgMuted}>
-        {`${keybindings.issueStatus} status · ${keybindings.issueAssign} assign · ${keybindings.issueComment} comment · ${keybindings.issueNewSubIssue} sub-issue · ${keybindings.issueCopyBranch} branch · ${keybindings.issueCopyId} id · esc back`}
+        {`${keybindings.issueStatus} status · ${keybindings.issueAssign} assign · ${keybindings.issueEdit} edit · ${keybindings.issueCycle} cycle · ${keybindings.issueComment} comment · ${keybindings.issueNewSubIssue} sub-issue · ${keybindings.issueCopyBranch} branch · ${keybindings.issueCopyId} id · esc back`}
       </text>
     </scrollbox>
   )
