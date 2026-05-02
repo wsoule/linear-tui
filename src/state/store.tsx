@@ -32,6 +32,7 @@ export type StatusFilterOption = {
 export type Modal =
   | { type: "status"; target: IssueTarget }
   | { type: "assignee"; target: IssueTarget }
+  | { type: "priority"; target: IssueTarget }
   | { type: "comment"; target: IssueTarget }
   | { type: "edit-issue"; target: IssueTarget }
   | { type: "cycle"; target: IssueTarget }

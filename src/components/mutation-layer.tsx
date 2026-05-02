@@ -21,6 +21,7 @@ import {
   teamStatesKey,
   updateIssueAssignee,
   updateIssueCycle,
+  updateIssuePriority,
   updateIssueState,
   updateIssueText,
   VIEWER_TEAMS_KEY,
@@ -268,6 +269,62 @@ function CycleModal({ target }: { target: IssueTarget }) {
             })),
           ]}
           onSelect={(_, option) => choose((option?.value as Cycle | null | undefined) ?? null)}
+        />
+      )}
+    </ModalFrame>
+  )
+}
+
+function PriorityModal({ target }: { target: IssueTarget }) {
+  useModalEscape()
+  const { setModal, addToast } = useStore()
+  const detail = useTargetDetail(target)
+  const currentPriority = detail.data?.issue.priority ?? 0
+  const selectedIndex = Math.max(
+    0,
+    priorities.findIndex((priority) => priority.value === currentPriority),
+  )
+
+  const choose = (priority: number) => {
+    if (!detail.data) return
+    setModal(null)
+    const nextIssue = {
+      ...detail.data.issue,
+      priority,
+      priorityLabel: priorityLabel(priority),
+    } as Issue
+    const rollback = patchIssueCaches(target.issueId, { issue: nextIssue })
+    addToast(`${target.identifier} -> ${priorityLabel(priority)}`, "info")
+    updateIssuePriority(target.issueId, priority)
+      .then(() => addToast(`${target.identifier} updated`, "success"))
+      .catch((e) => {
+        rollback()
+        addToast(String(e instanceof Error ? e.message : e), "error")
+      })
+  }
+
+  return (
+    <ModalFrame title="Set Priority" subtitle={`${target.identifier}  ${target.title}`}>
+      {detail.error ? (
+        <text fg={theme.danger}>error: {detail.error}</text>
+      ) : !detail.data ? (
+        <text fg={theme.fgDim}>no cached issue data yet</text>
+      ) : (
+        <select
+          focused
+          width={48}
+          height={priorities.length}
+          showDescription={false}
+          selectedIndex={selectedIndex}
+          selectedBackgroundColor={theme.bgSelected}
+          selectedTextColor={theme.fg}
+          textColor={theme.fgDim}
+          options={priorities.map((priority) => ({
+            name: priority.name,
+            description: "",
+            value: priority.value,
+          }))}
+          onSelect={(_, option) => choose((option?.value as number | undefined) ?? currentPriority)}
         />
       )}
     </ModalFrame>
@@ -847,6 +904,7 @@ export function MutationLayer() {
   if (modal.type === "assignee") return <AssigneeModal target={modal.target} />
   if (modal.type === "edit-issue") return <EditIssueModal target={modal.target} />
   if (modal.type === "cycle") return <CycleModal target={modal.target} />
+  if (modal.type === "priority") return <PriorityModal target={modal.target} />
   if (modal.type === "comment") return <CommentModal target={modal.target} />
   if (modal.type === "filter") return <FilterModal />
   if (modal.type === "status-filter") return <StatusFilterModal statuses={modal.statuses} />

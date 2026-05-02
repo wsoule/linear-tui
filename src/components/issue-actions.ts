@@ -132,7 +132,12 @@ export function useIssueActions() {
   }
 
   return {
-    handleIssueKey(key: KeyEvent, target: IssueTarget, allowComment = false) {
+    handleIssueKey(
+      key: KeyEvent,
+      target: IssueTarget,
+      allowComment = false,
+      allowPriority = false,
+    ) {
       if (matchesKeyBinding(key, keybindings.issueStatus)) {
         setModal({ type: "status", target })
         return true
@@ -147,6 +152,11 @@ export function useIssueActions() {
       }
       if (matchesKeyBinding(key, keybindings.issueCycle)) {
         setModal({ type: "cycle", target })
+        return true
+      }
+      if (matchesKeyBinding(key, keybindings.issuePriority)) {
+        if (!allowPriority) return false
+        setModal({ type: "priority", target })
         return true
       }
       if (matchesKeyBinding(key, keybindings.issueOpen)) {

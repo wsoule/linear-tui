@@ -5,6 +5,10 @@ const listeners = new Map<string, Set<() => void>>()
 
 const DEFAULT_TTL = 30_000
 
+function notify(key: string): void {
+  listeners.get(key)?.forEach((listener) => listener())
+}
+
 export function peek<T>(key: string): T | undefined {
   const hit = store.get(key)
   if (!hit) return undefined
@@ -22,7 +26,7 @@ export function remember<T>(
   ttlMs: number = DEFAULT_TTL,
 ): T {
   store.set(key, { value, expiry: Date.now() + ttlMs })
-  listeners.get(key)?.forEach((listener) => listener())
+  notify(key)
   return value
 }
 
@@ -52,16 +56,16 @@ export async function cached<T>(
 }
 
 export function invalidate(prefix?: string): void {
+  const keys = new Set([...store.keys(), ...listeners.keys()])
   if (!prefix) {
-    const keys = [...store.keys()]
     store.clear()
-    keys.forEach((key) => listeners.get(key)?.forEach((listener) => listener()))
+    keys.forEach(notify)
     return
   }
-  for (const key of store.keys()) {
+  for (const key of keys) {
     if (key.startsWith(prefix)) {
       store.delete(key)
-      listeners.get(key)?.forEach((listener) => listener())
+      notify(key)
     }
   }
 }

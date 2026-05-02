@@ -52,6 +52,7 @@ export function Help() {
         [keybindings.issueAssign, "reassign"],
         [keybindings.issueEdit, "edit title/description"],
         [keybindings.issueCycle, "set cycle"],
+        [keybindings.issuePriority, "set priority"],
         [keybindings.issueComment, "comment"],
         [keybindings.issueNewSubIssue, "new sub-issue"],
         [keybindings.issueOpen, "open in browser"],
@@ -77,6 +78,7 @@ export function Help() {
       heading: "global",
       rows: [
         [keybindings.globalNewIssue, "new issue"],
+        [keybindings.globalReload, "reload page"],
         [keybindings.globalSettings, "settings"],
         [keybindings.globalHelp, "toggle help"],
         ["q", "quit"],

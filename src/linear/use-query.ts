@@ -8,11 +8,37 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
   const [refreshing, setRefreshing] = useState(() => !peekStale<T>(key))
 
   useEffect(() => {
+    let cancelled = false
+    let requestId = 0
+
+    const load = () => {
+      const request = ++requestId
+      setRefreshing(true)
+      const end = beginRequest()
+      fetcher()
+        .then((d) => {
+          if (cancelled || request !== requestId) return
+          setData(d)
+          setError(null)
+        })
+        .catch((e) => {
+          const message = recordError(e)
+          if (!cancelled && request === requestId) setError(message)
+        })
+        .finally(() => {
+          end()
+          if (!cancelled && request === requestId) setRefreshing(false)
+        })
+    }
+
     const syncFromCache = () => {
       const cached = peekStale<T>(key)
       setData(cached ?? null)
       if (cached !== undefined) {
         setError(null)
+        setRefreshing(false)
+      } else {
+        load()
       }
     }
 
@@ -21,32 +47,16 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
       setData(fresh)
       setError(null)
       setRefreshing(false)
-      return subscribe(key, syncFromCache)
+    } else {
+      const cached = peekStale<T>(key)
+      setData(cached ?? null)
+      load()
     }
-
-    let cancelled = false
-    const cached = peekStale<T>(key)
-    setData(cached ?? null)
-    setRefreshing(true)
-    const end = beginRequest()
-    fetcher()
-      .then((d) => {
-        if (cancelled) return
-        setData(d)
-        setError(null)
-      })
-      .catch((e) => {
-        const message = recordError(e)
-        if (!cancelled) setError(message)
-      })
-      .finally(() => {
-        end()
-        if (!cancelled) setRefreshing(false)
-      })
 
     const unsubscribe = subscribe(key, syncFromCache)
     return () => {
       cancelled = true
+      requestId += 1
       unsubscribe()
     }
   }, [key])

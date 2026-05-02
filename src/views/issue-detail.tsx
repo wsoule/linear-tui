@@ -53,7 +53,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
         return
       }
     }
-    if (detail && handleIssueKey(key, targetFromDetail(detail), true)) return
+    if (detail && handleIssueKey(key, targetFromDetail(detail), true, true)) return
     const sb = scrollRef.current
     if (!sb) return
     switch (key.name) {
@@ -169,7 +169,7 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
       )}
       <text fg={theme.fgMuted}> </text>
       <text fg={theme.fgMuted}>
-        {`${keybindings.issueStatus} status · ${keybindings.issueAssign} assign · ${keybindings.issueEdit} edit · ${keybindings.issueCycle} cycle · ${keybindings.issueComment} comment · ${keybindings.issueNewSubIssue} sub-issue · ${keybindings.issueCopyBranch} branch · ${keybindings.issueCopyId} id · esc back`}
+        {`${keybindings.issueStatus} status · ${keybindings.issueAssign} assign · ${keybindings.issueEdit} edit · ${keybindings.issueCycle} cycle · ${keybindings.issuePriority} priority · ${keybindings.issueComment} comment · ${keybindings.issueNewSubIssue} sub-issue · ${keybindings.issueCopyBranch} branch · ${keybindings.issueCopyId} id · esc back`}
       </text>
     </scrollbox>
   )

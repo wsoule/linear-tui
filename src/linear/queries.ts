@@ -443,6 +443,16 @@ export async function updateIssueCycle(
   })
 }
 
+export async function updateIssuePriority(
+  issueId: string,
+  priority: number,
+): Promise<void> {
+  await trackRequest(async () => {
+    await linear.updateIssue(issueId, { priority })
+    await refreshIssueDetail(issueId)
+  })
+}
+
 export async function updateIssueText(
   issueId: string,
   title: string,

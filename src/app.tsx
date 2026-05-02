@@ -13,6 +13,7 @@ import { MutationLayer, ToastView } from "./components/mutation-layer"
 import { StatusLine } from "./components/status-line"
 import { StoreProvider, useStore } from "./state/store"
 import { matchesKeyBinding } from "./keybindings"
+import { invalidate } from "./linear/cache"
 import { theme } from "./theme"
 
 function Shell() {
@@ -30,6 +31,7 @@ function Shell() {
     setModal,
     keybindings,
     toast,
+    addToast,
   } = useStore()
 
   const inSearchView = view === "search" && !selectedIssueId
@@ -54,6 +56,12 @@ function Shell() {
 
     if (!inSearchView && matchesKeyBinding(key, keybindings.globalNewIssue)) {
       setModal({ type: "new-issue" })
+      return
+    }
+
+    if (!inSearchView && matchesKeyBinding(key, keybindings.globalReload)) {
+      invalidate()
+      addToast("reloading page")
       return
     }
 

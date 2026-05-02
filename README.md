@@ -49,9 +49,10 @@ Defaults:
 - `m`, `i`, `p`, `c`, `/` switch views.
 - `j`/`k`, arrows, `g`, `G`, `enter`, and `esc` navigate.
 - `s`, `a`, `c`, and `n` update the selected issue.
+- `p` sets priority while viewing an individual issue.
 - `y` copies the branch name, `Y` copies the issue id, and `B` switches to the branch.
 - `f`, `ctrl+g`, and `ctrl+o` edit saved list filtering, grouping, and ordering.
-- `,` opens settings, `?` opens help, and `q` quits.
+- `r` reloads the current page, `,` opens settings, `?` opens help, and `q` quits.
 
 Keybindings are stored in `~/.config/linear-tui/keybindings.json`.
 

@@ -45,6 +45,7 @@ export function Sidebar() {
       })}
       <text fg={theme.fgMuted}> </text>
       <text fg={theme.fgMuted}>{` ${keybindings.globalNewIssue}  new issue`}</text>
+      <text fg={theme.fgMuted}>{` ${keybindings.globalReload}  reload`}</text>
       <text fg={theme.fgMuted}>{` ${keybindings.globalSettings}  settings`}</text>
       <text fg={theme.fgMuted}>{` ${keybindings.globalHelp}  help`}</text>
       <text fg={theme.fgMuted}> q  quit</text>
