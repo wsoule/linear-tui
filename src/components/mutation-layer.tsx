@@ -46,6 +46,10 @@ function priorityLabel(priority: number): string {
   return priorities.find((p) => p.value === priority)?.name ?? "No priority"
 }
 
+function submittedInputValue(value: unknown): string {
+  return typeof value === "string" ? value : ""
+}
+
 function useModalEscape() {
   const { setModal } = useStore()
   useKeyboard((key) => {
@@ -388,6 +392,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
         <box
           style={{
             flexDirection: "row",
+            width: "100%",
             borderStyle: "single",
             borderColor: theme.borderActive,
             paddingLeft: 1,
@@ -397,12 +402,14 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
           <text fg={theme.fgMuted}>title </text>
           <input
             focused
-            value={title}
-            onInput={setTitle}
-            onSubmit={() => {
-              if (title.trim()) setStep("description")
+            onSubmit={(value) => {
+              const nextTitle = submittedInputValue(value).trim()
+              if (!nextTitle) return
+              setTitle(nextTitle)
+              setStep("description")
             }}
             placeholder="Issue title"
+            style={{ flexGrow: 1 }}
           />
         </box>
       ) : step === "description" ? (
@@ -451,10 +458,9 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
 function FilterModal() {
   useModalEscape()
   const { setModal, viewingPreferences, setViewingPreferences, addToast } = useStore()
-  const [value, setValue] = useState(viewingPreferences.filter)
 
-  const submit = () => {
-    const filter = value.trim()
+  const submit = (value: unknown) => {
+    const filter = submittedInputValue(value).trim()
     setViewingPreferences((current) => ({ ...current, filter }))
     setModal(null)
     addToast(filter ? `saved filter: ${filter}` : "filter cleared", "success")
@@ -469,6 +475,7 @@ function FilterModal() {
       <box
         style={{
           flexDirection: "row",
+          width: "100%",
           borderStyle: "single",
           borderColor: theme.borderActive,
           paddingLeft: 1,
@@ -478,10 +485,10 @@ function FilterModal() {
         <text fg={theme.fgMuted}>filter </text>
         <input
           focused
-          value={value}
-          onInput={setValue}
+          value={viewingPreferences.filter}
           onSubmit={submit}
           placeholder="submit empty to clear"
+          style={{ flexGrow: 1 }}
         />
       </box>
     </ModalFrame>
@@ -565,16 +572,14 @@ function SettingsModal() {
   const { keybindings, setKeybinding, setModal, addToast } = useStore()
   const [command, setCommand] = useState<KeyCommand>("issueCopyBranch")
   const [step, setStep] = useState<"command" | "binding">("command")
-  const [binding, setBinding] = useState(keybindings.issueCopyBranch)
 
   const chooseCommand = (nextCommand: KeyCommand) => {
     setCommand(nextCommand)
-    setBinding(keybindings[nextCommand])
     setStep("binding")
   }
 
-  const submit = () => {
-    const nextBinding = binding.trim()
+  const submit = (binding: unknown) => {
+    const nextBinding = submittedInputValue(binding).trim()
     if (!nextBinding) return
     setKeybinding(command, nextBinding)
     setModal(null)
@@ -607,6 +612,7 @@ function SettingsModal() {
         <box
           style={{
             flexDirection: "row",
+            width: "100%",
             borderStyle: "single",
             borderColor: theme.borderActive,
             paddingLeft: 1,
@@ -615,11 +621,12 @@ function SettingsModal() {
         >
           <text fg={theme.fgMuted}>key </text>
           <input
+            key={command}
             focused
-            value={binding}
-            onInput={setBinding}
+            value={keybindings[command]}
             onSubmit={submit}
             placeholder="examples: y, B, ctrl+g"
+            style={{ flexGrow: 1 }}
           />
         </box>
       )}

@@ -87,6 +87,7 @@ export function Search({ active }: { active: boolean }) {
       <box
         style={{
           flexDirection: "row",
+          width: "100%",
           borderStyle: "single",
           borderColor: inputFocused ? theme.borderActive : theme.border,
           paddingLeft: 1,
@@ -95,10 +96,10 @@ export function Search({ active }: { active: boolean }) {
       >
         <text fg={theme.accent}>/ </text>
         <input
-          value={query}
           onInput={setQuery}
           focused={inputFocused}
           placeholder="search issues…"
+          style={{ flexGrow: 1 }}
         />
       </box>
       <text fg={theme.fgMuted}> </text>
