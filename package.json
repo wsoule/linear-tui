@@ -1,6 +1,6 @@
 {
   "name": "linear-tui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A keyboard-first Linear client for the terminal.",
   "module": "src/index.tsx",
   "bin": {
