@@ -76,3 +76,7 @@ Theme overrides can be placed at `~/.config/linear-tui/theme.json`:
 ```sh
 bun run typecheck
 ```
+
+
+
+edit to readme
