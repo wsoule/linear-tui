@@ -3,6 +3,8 @@ import { getActivitySnapshot, subscribeActivity } from "../linear/activity"
 import { getViewer, VIEWER_KEY } from "../linear/queries"
 import { useCachedQuery } from "../linear/use-query"
 import { useStore, type View } from "../state/store"
+import { useGitSummary } from "../git/use-git-summary"
+import { useCurrentPullRequest } from "../github/use-current-pr"
 import { groupByLabel, orderByLabel, statusFilterLabel } from "../viewing/preferences"
 import { theme } from "../theme"
 
@@ -13,6 +15,7 @@ const viewLabels: Record<View, string> = {
   inbox: "Inbox",
   projects: "Projects",
   cycles: "Cycles",
+  git: "Git",
   search: "Search",
 }
 
@@ -25,6 +28,8 @@ function ellipsize(value: string, max: number): string {
 export function StatusLine() {
   const { view, selectedIssueId, selectedProjectId, viewingPreferences } = useStore()
   const { data: viewer } = useCachedQuery(VIEWER_KEY, getViewer)
+  const git = useGitSummary()
+  const pullRequest = useCurrentPullRequest()
   const activity = useSyncExternalStore(
     subscribeActivity,
     getActivitySnapshot,
@@ -45,6 +50,18 @@ export function StatusLine() {
     viewingPreferences.groupBy !== "none" ? `group ${groupByLabel(viewingPreferences.groupBy)}` : null,
     viewingPreferences.orderBy !== "none" ? `order ${orderByLabel(viewingPreferences.orderBy)}` : null,
   ].filter(Boolean).join(" · ")
+  const gitBits = git?.available
+    ? [
+        `git ${ellipsize(git.branch, 24)}`,
+        git.dirtyCount > 0 ? `+${git.dirtyCount}` : "clean",
+        git.ahead > 0 ? `up ${git.ahead}` : null,
+        git.behind > 0 ? `down ${git.behind}` : null,
+        git.issueIdentifier,
+      ].filter(Boolean).join(" ")
+    : ""
+  const prBits = pullRequest
+    ? `gh #${pullRequest.number} ${pullRequest.isDraft ? "DRAFT" : pullRequest.state} ${pullRequest.checks}`
+    : ""
   const errorText = activity.lastError
     ? `last error: ${ellipsize(activity.lastError, 72)}`
     : "no recent errors"
@@ -64,6 +81,18 @@ export function StatusLine() {
       <text fg={theme.fgMuted}>  ·  </text>
       <text fg={theme.fg}>{location}</text>
       <text fg={theme.fgMuted}>  ·  </text>
+      {gitBits ? (
+        <>
+          <text fg={git?.dirtyCount ? theme.warn : theme.fgMuted}>{gitBits}</text>
+          <text fg={theme.fgMuted}>  ·  </text>
+        </>
+      ) : null}
+      {prBits ? (
+        <>
+          <text fg={pullRequest?.checks.includes("fail") ? theme.danger : theme.fgMuted}>{prBits}</text>
+          <text fg={theme.fgMuted}>  ·  </text>
+        </>
+      ) : null}
       {viewingText ? (
         <>
           <text fg={theme.warn}>{viewingText}</text>

@@ -8,6 +8,7 @@ const ITEMS: { view: View; label: string; key: string }[] = [
   { view: "inbox", label: "Inbox", key: "i" },
   { view: "projects", label: "Projects", key: "p" },
   { view: "cycles", label: "Cycles", key: "c" },
+  { view: "git", label: "Git", key: "b" },
   { view: "search", label: "Search", key: "/" },
 ]
 

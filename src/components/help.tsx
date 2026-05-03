@@ -13,6 +13,7 @@ export function Help() {
         ["i", "inbox"],
         ["p", "projects"],
         ["c", "cycles"],
+        ["b", "git branches"],
         ["/", "search"],
       ],
     },
@@ -72,6 +73,15 @@ export function Help() {
       rows: [
         ["tab", "toggle input ↔ results"],
         ["esc", "leave search"],
+      ],
+    },
+    {
+      heading: "git",
+      rows: [
+        ["b", "branches view"],
+        ["enter", "open linked issue"],
+        ["o", "open GitHub PR"],
+        ["r", "reload branches"],
       ],
     },
     {

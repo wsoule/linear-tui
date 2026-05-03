@@ -7,6 +7,7 @@ import { Triage } from "./views/triage"
 import { Inbox } from "./views/inbox"
 import { Projects } from "./views/projects"
 import { Cycles } from "./views/cycles"
+import { GitView } from "./views/git"
 import { Search } from "./views/search"
 import { IssueDetail } from "./views/issue-detail"
 import { MutationLayer, ToastView } from "./components/mutation-layer"
@@ -32,6 +33,7 @@ function Shell() {
     keybindings,
     toast,
     addToast,
+    requestReload,
   } = useStore()
 
   const inSearchView = view === "search" && !selectedIssueId
@@ -61,6 +63,7 @@ function Shell() {
 
     if (!inSearchView && matchesKeyBinding(key, keybindings.globalReload)) {
       invalidate()
+      requestReload()
       addToast("reloading page")
       return
     }
@@ -87,6 +90,7 @@ function Shell() {
       case "i": setView("inbox"); break
       case "p": setView("projects"); break
       case "c": setView("cycles"); break
+      case "b": setView("git"); break
       case "/": setView("search"); break
     }
   })
@@ -108,6 +112,8 @@ function Shell() {
     content = <Projects active={listActive} />
   } else if (view === "cycles") {
     content = <Cycles active={listActive} />
+  } else if (view === "git") {
+    content = <GitView active={listActive} />
   } else if (view === "search") {
     content = <Search active={listActive} />
   }

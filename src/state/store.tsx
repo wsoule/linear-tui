@@ -12,7 +12,7 @@ import {
   type ViewingPreferences,
 } from "../viewing/preferences"
 
-export type View = "my-issues" | "issues" | "triage" | "inbox" | "projects" | "cycles" | "search"
+export type View = "my-issues" | "issues" | "triage" | "inbox" | "projects" | "cycles" | "git" | "search"
 export type IssueTarget = {
   issueId: string
   identifier: string
@@ -68,6 +68,8 @@ type Store = {
   setKeybinding: (command: KeyCommand, binding: string) => void
   toast: Toast | null
   addToast: (message: string, tone?: Toast["tone"]) => void
+  reloadToken: number
+  requestReload: () => void
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -82,6 +84,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     useState<ViewingPreferences>(loadViewingPreferences)
   const [keybindings, setKeybindings] = useState<Keybindings>(loadKeybindings)
   const [toast, setToast] = useState<Toast | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
 
   const setViewWrapped = (v: View) => {
     setSelectedProjectId(null)
@@ -94,6 +97,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       setToast((current) => current?.id === id ? null : current)
     }, 3000)
+  }
+
+  const requestReload = () => {
+    setReloadToken((current) => current + 1)
   }
 
   const setViewingPreferences = (
@@ -136,6 +143,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setKeybinding,
         toast,
         addToast,
+        reloadToken,
+        requestReload,
       }}
     >
       {children}

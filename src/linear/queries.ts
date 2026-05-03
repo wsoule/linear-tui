@@ -279,6 +279,18 @@ export async function getIssueDetail(id: string): Promise<IssueDetailData> {
   return cached(issueDetailKey(id), () => loadIssueDetail(id))
 }
 
+export async function resolveIssueIdentifier(identifier: string): Promise<Issue> {
+  return trackRequest(async () => {
+    const conn = await linear.issues({
+      first: 1,
+      filter: { id: { eq: identifier } },
+    })
+    const issue = conn.nodes[0]
+    if (!issue) throw new Error(`No Linear issue found for ${identifier}`)
+    return issue
+  })
+}
+
 export async function refreshIssueDetail(id: string): Promise<IssueDetailData> {
   return remember(issueDetailKey(id), await loadIssueDetail(id))
 }
