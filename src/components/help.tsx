@@ -8,6 +8,7 @@ export function Help() {
       heading: "views",
       rows: [
         ["m", "my issues"],
+        ["w", "current work"],
         ["x", "issues"],
         ["t", "triage"],
         ["i", "inbox"],
@@ -22,6 +23,9 @@ export function Help() {
       rows: [
         ["j / ↓", "down"],
         ["k / ↑", "up"],
+        ["ctrl+n", "next"],
+        ["ctrl+p", "previous"],
+        ["ctrl+y", "accept"],
         ["g", "top"],
         ["G", "bottom"],
         ["enter / l", "open"],
@@ -72,6 +76,8 @@ export function Help() {
       heading: "search",
       rows: [
         ["tab", "toggle input ↔ results"],
+        ["ctrl+n / p", "results"],
+        ["ctrl+y", "open first result"],
         ["esc", "leave search"],
       ],
     },
@@ -81,6 +87,9 @@ export function Help() {
         ["b", "branches view"],
         ["enter", "open linked issue"],
         ["o", "open GitHub PR"],
+        ["P", "create/open PR"],
+        ["v", "open PR checks"],
+        [keybindings.issueSwitchBranch, "switch branch"],
         ["r", "reload branches"],
       ],
     },
@@ -89,6 +98,9 @@ export function Help() {
       rows: [
         [keybindings.globalNewIssue, "new issue"],
         [keybindings.globalReload, "reload page"],
+        [keybindings.globalCommandPalette, "command palette"],
+        ["ctrl+n / p", "palette next / previous"],
+        ["ctrl+y", "palette accept"],
         [keybindings.globalSettings, "settings"],
         [keybindings.globalHelp, "toggle help"],
         ["q", "quit"],

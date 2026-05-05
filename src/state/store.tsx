@@ -12,7 +12,7 @@ import {
   type ViewingPreferences,
 } from "../viewing/preferences"
 
-export type View = "my-issues" | "issues" | "triage" | "inbox" | "projects" | "cycles" | "git" | "search"
+export type View = "my-issues" | "work" | "issues" | "triage" | "inbox" | "projects" | "cycles" | "git" | "search"
 export type IssueTarget = {
   issueId: string
   identifier: string
@@ -41,6 +41,7 @@ export type Modal =
   | { type: "status-filter"; statuses: StatusFilterOption[] }
   | { type: "group" }
   | { type: "order" }
+  | { type: "command-palette" }
   | { type: "settings" }
 
 export type Toast = {

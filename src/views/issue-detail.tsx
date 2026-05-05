@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { Attachment, Issue } from "@linear/sdk"
+import { getGitBranches, type GitBranch } from "../git/repository"
+import { getGhPullRequests, type GhPullRequest } from "../github/cli"
 import {
   getIssueDetail,
   issueDetailKey,
@@ -9,10 +11,12 @@ import {
   type IssueRelationRow,
   type IssueRow,
 } from "../linear/queries"
+import { actorName, describeIssueHistory } from "../linear/history"
 import { useCachedQuery } from "../linear/use-query"
 import { StatusBadge } from "../components/status-badge"
 import { openUrl, targetFromDetail, useIssueActions } from "../components/issue-actions"
 import { useStore } from "../state/store"
+import { isVimAcceptKey, isVimNextKey, isVimPreviousKey } from "../keybindings"
 import { theme } from "../theme"
 
 export function IssueDetail({ issueId, active }: { issueId: string; active: boolean }) {
@@ -22,8 +26,13 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
   )
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const [attachmentIndex, setAttachmentIndex] = useState(0)
+  const [gitInfo, setGitInfo] = useState<{
+    branch: GitBranch | null
+    pullRequest: GhPullRequest | null
+    error: string | null
+  } | null>(null)
   const { handleIssueKey } = useIssueActions()
-  const { addToast, keybindings } = useStore()
+  const { addToast, keybindings, reloadToken } = useStore()
 
   useEffect(() => {
     setAttachmentIndex(0)
@@ -33,6 +42,34 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
     const count = detail?.attachments?.length ?? 0
     if (count > 0 && attachmentIndex >= count) setAttachmentIndex(count - 1)
   }, [attachmentIndex, detail?.attachments?.length])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!detail) {
+      setGitInfo(null)
+      return
+    }
+    const target = targetFromDetail(detail)
+    Promise.all([
+      getGitBranches().catch((e) => ({
+        error: String(e instanceof Error ? e.message : e),
+        branches: [] as GitBranch[],
+      })),
+      getGhPullRequests().catch(() => [] as GhPullRequest[]),
+    ]).then(([git, prs]) => {
+      if (cancelled) return
+      const branches = Array.isArray(git) ? git : git.branches
+      const error = Array.isArray(git) ? null : git.error
+      setGitInfo({
+        branch: branches.find((branch) => branch.name === target.branchName) ?? null,
+        pullRequest: prs.find((pr) => pr.headRefName === target.branchName) ?? null,
+        error,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [detail, reloadToken])
 
   const openAttachment = (attachment: Attachment) => {
     void openUrl(attachment.url)
@@ -48,7 +85,19 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
         setAttachmentIndex((i) => (i + 1) % attachments.length)
         return
       }
+      if (isVimNextKey(key)) {
+        setAttachmentIndex((i) => (i + 1) % attachments.length)
+        return
+      }
+      if (isVimPreviousKey(key)) {
+        setAttachmentIndex((i) => (i - 1 + attachments.length) % attachments.length)
+        return
+      }
       if (key.name === "return") {
+        openAttachment(attachments[attachmentIndex]!)
+        return
+      }
+      if (isVimAcceptKey(key)) {
         openAttachment(attachments[attachmentIndex]!)
         return
       }
@@ -94,10 +143,12 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
   }
 
   const { issue, state, assignee, team, cycle } = detail
+  const target = targetFromDetail(detail)
   const comments = detail.comments ?? []
   const children = detail.children ?? []
   const relations = detail.relations ?? []
   const attachments = detail.attachments ?? []
+  const history = detail.history ?? []
 
   return (
     <scrollbox ref={scrollRef} style={{ flexGrow: 1, padding: 1 }} stickyScroll={false}>
@@ -120,6 +171,22 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
         <text fg={theme.fgMuted}>   cycle: </text>
         <text fg={theme.fgDim}>
           {cycle ? cycle.name ? `Cycle ${cycle.number} - ${cycle.name}` : `Cycle ${cycle.number}` : "—"}
+        </text>
+      </box>
+      <text fg={theme.fgMuted}> </text>
+      <text fg={theme.fgMuted}>───── git ─────</text>
+      <box style={{ flexDirection: "row" }}>
+        <text fg={theme.fgMuted}>branch: </text>
+        <text fg={theme.fg}>{target.branchName}</text>
+        <text fg={theme.fgMuted}>   local: </text>
+        <text fg={gitInfo?.branch?.current ? theme.accent : gitInfo?.branch ? theme.success : theme.fgDim}>
+          {gitInfo?.branch?.current ? "current" : gitInfo?.branch ? "exists" : gitInfo?.error ? "unavailable" : "missing"}
+        </text>
+        <text fg={theme.fgMuted}>   pr: </text>
+        <text fg={gitInfo?.pullRequest ? theme.success : theme.fgDim}>
+          {gitInfo?.pullRequest
+            ? `#${gitInfo.pullRequest.number} ${gitInfo.pullRequest.isDraft ? "DRAFT" : gitInfo.pullRequest.state} ${gitInfo.pullRequest.checks}`
+            : "—"}
         </text>
       </box>
       <text fg={theme.fgMuted}> </text>
@@ -153,6 +220,19 @@ export function IssueDetail({ issueId, active }: { issueId: string; active: bool
           <text fg={theme.fgMuted}> </text>
         </>
       ) : null}
+      <text fg={theme.fgMuted}>───── activity ({history.length}) ─────</text>
+      {history.length === 0 ? (
+        <text fg={theme.fgDim}>(none)</text>
+      ) : (
+        history.map((entry) => (
+          <box key={entry.id} style={{ flexDirection: "row" }}>
+            <text fg={theme.fgMuted}>{`${new Date(entry.createdAt).toLocaleString()}  `}</text>
+            <text fg={theme.accent}>{actorName(entry)}</text>
+            <text fg={theme.fg}>{`  ${describeIssueHistory(entry)}`}</text>
+          </box>
+        ))
+      )}
+      <text fg={theme.fgMuted}> </text>
       <text fg={theme.fgMuted}>───── comments ({comments.length}) ─────</text>
       {comments.length === 0 ? (
         <text fg={theme.fgDim}>(none)</text>

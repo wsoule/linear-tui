@@ -2,6 +2,7 @@ import {
   type Attachment,
   type Cycle,
   type Issue,
+  type IssueHistory,
   type IssueRelation,
   type User,
   type WorkflowState,
@@ -47,6 +48,7 @@ export type IssueDetailData = {
   children: IssueRow[]
   relations: IssueRelationRow[]
   attachments: Attachment[]
+  history: IssueHistory[]
 }
 
 type CreateIssueInput = {
@@ -231,7 +233,7 @@ export async function searchIssuesQuery(query: string): Promise<IssueRow[]> {
 
 async function loadIssueDetail(id: string): Promise<IssueDetailData> {
   const issue = await linear.issue(id)
-  const [state, assignee, team, cycle, comments, children, attachments, relations, inverseRelations] = await Promise.all([
+  const [state, assignee, team, cycle, comments, children, attachments, relations, inverseRelations, history] = await Promise.all([
     issue.state,
     issue.assignee,
     issue.team,
@@ -241,6 +243,7 @@ async function loadIssueDetail(id: string): Promise<IssueDetailData> {
     issue.attachments({ first: 50 }),
     issue.relations({ first: 50 }),
     issue.inverseRelations({ first: 50 }),
+    issue.history({ first: 20 }),
   ])
   const [enrichedComments, enrichedChildren, enrichedRelations] = await Promise.all([
     Promise.all(
@@ -272,6 +275,7 @@ async function loadIssueDetail(id: string): Promise<IssueDetailData> {
     children: enrichedChildren,
     relations: enrichedRelations,
     attachments: attachments.nodes,
+    history: history.nodes,
   }
 }
 
@@ -386,6 +390,7 @@ export function primeIssueDetail(row: IssueRow, cycle?: Cycle | null): void {
     children: [],
     relations: [],
     attachments: [],
+    history: [],
   })
 }
 

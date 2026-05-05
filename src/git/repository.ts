@@ -36,6 +36,18 @@ async function runGit(args: string[]): Promise<string> {
   return textDecoder.decode(stdout).trimEnd()
 }
 
+export async function switchGitBranch(branchName: string): Promise<void> {
+  await runGit(["switch", branchName])
+}
+
+export async function switchOrCreateGitBranch(branchName: string): Promise<void> {
+  try {
+    await switchGitBranch(branchName)
+  } catch {
+    await runGit(["switch", "-c", branchName])
+  }
+}
+
 export function issueIdentifierFromBranch(branchName: string): string | null {
   const match = branchName.match(/(^|[^a-z0-9])([a-z][a-z0-9]+)-(\d+)(?=$|[^a-z0-9])/i)
   if (!match) return null

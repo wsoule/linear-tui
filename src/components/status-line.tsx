@@ -10,6 +10,7 @@ import { theme } from "../theme"
 
 const viewLabels: Record<View, string> = {
   "my-issues": "My Issues",
+  work: "Work",
   issues: "Issues",
   triage: "Triage",
   inbox: "Inbox",

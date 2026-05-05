@@ -15,7 +15,7 @@ type GhPullRequestPayload = Omit<GhPullRequest, "checks"> & {
 
 const textDecoder = new TextDecoder()
 
-async function runGh(args: string[]): Promise<string> {
+async function runGh(args: string[], allowedExitCodes = [0]): Promise<string> {
   const proc = Bun.spawn(["gh", ...args], {
     stdout: "pipe",
     stderr: "pipe",
@@ -25,7 +25,7 @@ async function runGh(args: string[]): Promise<string> {
     new Response(proc.stderr).arrayBuffer(),
     proc.exited,
   ])
-  if (code !== 0) {
+  if (!allowedExitCodes.includes(code)) {
     const message = textDecoder.decode(stderr).trim()
     throw new Error(message || `gh ${args.join(" ")} failed`)
   }
@@ -103,4 +103,16 @@ export async function getGhCurrentPullRequest(): Promise<GhPullRequest | null> {
     if (message.includes("no pull requests found")) return null
     throw e
   }
+}
+
+export async function openGhPullRequest(branchOrNumber: string | number): Promise<void> {
+  await runGh(["pr", "view", String(branchOrNumber), "--web"])
+}
+
+export async function openGhPullRequestChecks(branchOrNumber: string | number): Promise<void> {
+  await runGh(["pr", "checks", String(branchOrNumber), "--web"], [0, 8])
+}
+
+export async function createGhPullRequest(branchName: string): Promise<void> {
+  await runGh(["pr", "create", "--web", "--head", branchName])
 }

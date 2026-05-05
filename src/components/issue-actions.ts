@@ -4,6 +4,7 @@ import type { Cycle } from "@linear/sdk"
 import type { IssueTarget } from "../state/store"
 import { useStore } from "../state/store"
 import type { IssueDetailData, IssueRow } from "../linear/queries"
+import { switchOrCreateGitBranch } from "../git/repository"
 import { matchesKeyBinding } from "../keybindings"
 
 function slug(value: string): string {
@@ -72,20 +73,6 @@ async function copyWithSystemClipboard(text: string): Promise<void> {
   if (code !== 0) throw new Error("pbcopy failed")
 }
 
-async function switchToBranch(branchName: string): Promise<void> {
-  const existing = Bun.spawn(["git", "switch", branchName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  })
-  if (await existing.exited === 0) return
-
-  const created = Bun.spawn(["git", "switch", "-c", branchName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  })
-  if (await created.exited !== 0) throw new Error("git branch switch failed")
-}
-
 export function useIssueActions() {
   const renderer = useRenderer()
   const { setModal, addToast, keybindings } = useStore()
@@ -124,7 +111,7 @@ export function useIssueActions() {
 
   const checkoutBranch = async (target: IssueTarget) => {
     try {
-      await switchToBranch(target.branchName)
+      await switchOrCreateGitBranch(target.branchName)
       addToast(`switched to ${target.branchName}`, "success")
     } catch (e) {
       addToast(String(e instanceof Error ? e.message : e), "error")

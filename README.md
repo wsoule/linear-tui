@@ -46,14 +46,16 @@ bun run dev
 
 Defaults:
 
-- `m`, `i`, `p`, `c`, `b`, `/` switch views.
+- `m`, `w`, `x`, `t`, `i`, `p`, `c`, `b`, `/` switch views.
 - `j`/`k`, arrows, `g`, `G`, `enter`, and `esc` navigate.
+- `ctrl+n`, `ctrl+p`, and `ctrl+y` move through and accept list, picker, and palette selections.
 - `s`, `a`, `c`, and `n` update the selected issue.
 - `p` sets priority while viewing an individual issue.
 - `y` copies the branch name, `Y` copies the issue id, and `B` switches to the branch.
 - `f`, `ctrl+g`, and `ctrl+o` edit saved list filtering, grouping, and ordering.
-- `r` reloads the current page, `,` opens settings, `?` opens help, and `q` quits.
-- The Git view shows local branches, GitHub PR metadata from `gh`, and opens the linked Linear issue when a branch name contains an issue id like `LIN-123`.
+- `r` reloads the current page, `:` opens the command palette, `,` opens settings, `?` opens help, and `q` quits.
+- The Current Work view connects your branch, its Linear issue, the current GitHub PR, and recent Linear activity.
+- The Git view shows local branches, GitHub PR metadata from `gh`, opens linked Linear issues from branch names like `LIN-123`, switches branches with `B`, creates or opens PRs with `P`, and opens PR checks with `v`.
 
 Keybindings are stored in `~/.config/linear-tui/keybindings.json`.
 

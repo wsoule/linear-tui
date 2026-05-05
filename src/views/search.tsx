@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import {
+  primeIssueDetail,
   searchIssuesQuery,
   searchKey,
   type IssueRow,
@@ -9,6 +10,8 @@ import { peek } from "../linear/cache"
 import { beginRequest, recordError } from "../linear/activity"
 import { IssueList } from "../components/issue-list"
 import { TextLine } from "../components/text-line"
+import { useStore } from "../state/store"
+import { isVimAcceptKey, isVimNextKey, isVimPreviousKey } from "../keybindings"
 import { theme } from "../theme"
 
 type Mode = "input" | "results"
@@ -19,6 +22,7 @@ export function Search({ active }: { active: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [mode, setMode] = useState<Mode>("input")
+  const { setSelectedIssueId } = useStore()
 
   useEffect(() => {
     if (!query.trim()) {
@@ -65,6 +69,15 @@ export function Search({ active }: { active: boolean }) {
 
   useKeyboard((key) => {
     if (!active) return
+    if (mode === "input" && rows && rows.length > 0 && (isVimNextKey(key) || isVimPreviousKey(key))) {
+      setMode("results")
+      return
+    }
+    if (mode === "input" && rows && rows.length > 0 && isVimAcceptKey(key)) {
+      primeIssueDetail(rows[0]!)
+      setSelectedIssueId(rows[0]!.issue.id)
+      return
+    }
     if (key.name === "tab") {
       setMode((m) =>
         m === "input" && rows && rows.length > 0 ? "results" : "input",

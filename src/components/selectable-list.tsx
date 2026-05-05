@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core"
+import { isVimAcceptKey, isVimNextKey, isVimPreviousKey } from "../keybindings"
 import { theme } from "../theme"
 import { TextLine } from "./text-line"
 
@@ -86,6 +87,18 @@ export function SelectableList<T>({
     const selectedItem = items[index]!
     if (!canSelect(selectedItem)) return
     if (onKey?.(key, selectedItem)) return
+    if (isVimNextKey(key)) {
+      setIndex((i) => nextSelectableIndex(items, i, 1))
+      return
+    }
+    if (isVimPreviousKey(key)) {
+      setIndex((i) => nextSelectableIndex(items, i, -1))
+      return
+    }
+    if (isVimAcceptKey(key)) {
+      onSelect(selectedItem)
+      return
+    }
     switch (key.name) {
       case "j":
       case "down":

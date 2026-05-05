@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react"
-import { getGitBranches, type GitBranch } from "../git/repository"
-import { getGhPullRequests, type GhPullRequest } from "../github/cli"
+import { getGitBranches, switchGitBranch, type GitBranch } from "../git/repository"
+import {
+  createGhPullRequest,
+  getGhPullRequests,
+  openGhPullRequestChecks,
+  type GhPullRequest,
+} from "../github/cli"
 import { resolveIssueIdentifier } from "../linear/queries"
 import { SelectableList } from "../components/selectable-list"
 import { openUrl } from "../components/issue-actions"
 import { useStore } from "../state/store"
+import { matchesKeyBinding } from "../keybindings"
 import { theme } from "../theme"
 
 type BranchRow = GitBranch & {
@@ -18,7 +24,7 @@ function ellipsize(value: string, max: number): string {
 }
 
 export function GitView({ active }: { active: boolean }) {
-  const { setSelectedIssueId, addToast, reloadToken } = useStore()
+  const { setSelectedIssueId, addToast, keybindings, reloadToken, requestReload } = useStore()
   const [branches, setBranches] = useState<BranchRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ghError, setGhError] = useState<string | null>(null)
@@ -81,6 +87,37 @@ export function GitView({ active }: { active: boolean }) {
       .catch((e) => addToast(String(e instanceof Error ? e.message : e), "error"))
   }
 
+  const checkoutBranch = (branch: BranchRow) => {
+    addToast(`switching to ${branch.name}`, "info")
+    switchGitBranch(branch.name)
+      .then(() => {
+        requestReload()
+        addToast(`switched to ${branch.name}`, "success")
+      })
+      .catch((e) => addToast(String(e instanceof Error ? e.message : e), "error"))
+  }
+
+  const createOrOpenPullRequest = (branch: BranchRow) => {
+    if (branch.pullRequest) {
+      openPullRequest(branch)
+      return
+    }
+    addToast(`opening PR create for ${branch.name}`, "info")
+    createGhPullRequest(branch.name)
+      .then(() => addToast(`opened PR create for ${branch.name}`, "success"))
+      .catch((e) => addToast(String(e instanceof Error ? e.message : e), "error"))
+  }
+
+  const openChecks = (branch: BranchRow) => {
+    if (!branch.pullRequest) {
+      addToast(`no GitHub PR for ${branch.name}`, "error")
+      return
+    }
+    openGhPullRequestChecks(branch.pullRequest.number)
+      .then(() => addToast(`opened checks for PR #${branch.pullRequest?.number}`, "success"))
+      .catch((e) => addToast(String(e instanceof Error ? e.message : e), "error"))
+  }
+
   return (
     <SelectableList<BranchRow>
       title="Git"
@@ -89,7 +126,10 @@ export function GitView({ active }: { active: boolean }) {
           ? [
               `${branches.length} branches`,
               "enter opens linked issue",
+              `${keybindings.issueSwitchBranch} switches branch`,
               "o opens PR",
+              "P creates PR",
+              "v opens checks",
               "r reloads",
               ghError ? "gh unavailable" : null,
             ].filter(Boolean).join(" · ")
@@ -102,9 +142,23 @@ export function GitView({ active }: { active: boolean }) {
       getId={(branch) => branch.name}
       onSelect={openIssueForBranch}
       onKey={(key, branch) => {
-        if (key.name !== "o") return false
-        openPullRequest(branch)
-        return true
+        if (matchesKeyBinding(key, keybindings.issueSwitchBranch)) {
+          checkoutBranch(branch)
+          return true
+        }
+        if (key.name === "o") {
+          openPullRequest(branch)
+          return true
+        }
+        if (key.name === "v") {
+          openChecks(branch)
+          return true
+        }
+        if (key.name === "P" || key.name === "p" && key.shift) {
+          createOrOpenPullRequest(branch)
+          return true
+        }
+        return false
       }}
       renderRow={(branch) => (
         <box style={{ flexDirection: "row" }}>

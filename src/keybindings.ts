@@ -4,6 +4,7 @@ import { isRecord, readJsonConfig, writeJsonConfig } from "./config-files"
 export const KEY_COMMANDS = [
   { key: "globalHelp", label: "Toggle help" },
   { key: "globalSettings", label: "Open settings" },
+  { key: "globalCommandPalette", label: "Command palette" },
   { key: "globalNewIssue", label: "New top-level issue" },
   { key: "globalReload", label: "Reload page" },
   { key: "viewFilter", label: "Filter issues" },
@@ -29,6 +30,7 @@ export type Keybindings = Record<KeyCommand, string>
 export const defaultKeybindings: Keybindings = {
   globalHelp: "?",
   globalSettings: ",",
+  globalCommandPalette: ":",
   globalNewIssue: "N",
   globalReload: "r",
   viewFilter: "f",
@@ -92,6 +94,18 @@ export function loadKeybindings(): Keybindings {
 
 export function saveKeybindings(keybindings: Keybindings): void {
   writeJsonConfig("keybindings.json", keybindings)
+}
+
+export function isVimNextKey(key: KeyEvent): boolean {
+  return key.ctrl && key.name === "n"
+}
+
+export function isVimPreviousKey(key: KeyEvent): boolean {
+  return key.ctrl && key.name === "p"
+}
+
+export function isVimAcceptKey(key: KeyEvent): boolean {
+  return key.ctrl && key.name === "y"
 }
 
 export function matchesKeyBinding(key: KeyEvent, binding: string): boolean {

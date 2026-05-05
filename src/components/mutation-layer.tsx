@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { Cycle, Issue, Team, User, WorkflowState } from "@linear/sdk"
-import type { InputRenderable, TextareaRenderable } from "@opentui/core"
-import { useStore, type IssueTarget, type StatusFilterOption, type Toast } from "../state/store"
-import { KEY_COMMANDS, commandLabel, type KeyCommand } from "../keybindings"
+import type { InputRenderable, SelectKeyBinding, TextareaRenderable } from "@opentui/core"
+import { useStore, type IssueTarget, type StatusFilterOption, type Toast, type View } from "../state/store"
+import {
+  KEY_COMMANDS,
+  commandLabel,
+  isVimAcceptKey,
+  isVimNextKey,
+  isVimPreviousKey,
+  type KeyCommand,
+} from "../keybindings"
 import {
   appendCommentCache,
   createIssue,
@@ -46,6 +53,12 @@ const priorities = [
   { name: "High", value: 2 },
   { name: "Medium", value: 3 },
   { name: "Low", value: 4 },
+]
+
+const VIM_SELECT_KEY_BINDINGS: SelectKeyBinding[] = [
+  { name: "n", ctrl: true, action: "move-down" },
+  { name: "p", ctrl: true, action: "move-up" },
+  { name: "y", ctrl: true, action: "select-current" },
 ]
 
 function priorityLabel(priority: number): string {
@@ -143,6 +156,7 @@ function StatusModal({ target }: { target: IssueTarget }) {
       ) : (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={48}
           height={Math.min(10, Math.max(3, states.length))}
           showDescription={false}
@@ -195,6 +209,7 @@ function AssigneeModal({ target }: { target: IssueTarget }) {
       ) : (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={48}
           height={Math.min(12, Math.max(3, members.length + 1))}
           showDescription={false}
@@ -253,6 +268,7 @@ function CycleModal({ target }: { target: IssueTarget }) {
       ) : (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={48}
           height={Math.min(12, Math.max(3, cycles.length + 1))}
           showDescription={false}
@@ -312,6 +328,7 @@ function PriorityModal({ target }: { target: IssueTarget }) {
       ) : (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={48}
           height={priorities.length}
           showDescription={false}
@@ -531,6 +548,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       children: [],
       relations: [],
       attachments: [],
+      history: [],
     })
     setSelectedIssueId(id)
     setModal(null)
@@ -592,6 +610,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       ) : step === "team" ? (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={56}
           height={Math.min(12, Math.max(3, teams.length))}
           showDescription={false}
@@ -653,6 +672,7 @@ function NewIssueModal({ parent }: { parent?: IssueTarget }) {
       ) : (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={56}
           height={5}
           showDescription={false}
@@ -740,6 +760,7 @@ function StatusFilterModal({ statuses }: { statuses: StatusFilterOption[] }) {
     <ModalFrame title="Filter Status" subtitle="saved for every issue list">
       <select
         focused
+        keyBindings={VIM_SELECT_KEY_BINDINGS}
         width={48}
         height={Math.min(12, Math.max(3, options.length))}
         showDescription={false}
@@ -776,6 +797,7 @@ function GroupModal() {
     <ModalFrame title="Group Issues" subtitle="saved for every issue list">
       <select
         focused
+        keyBindings={VIM_SELECT_KEY_BINDINGS}
         width={48}
         height={GROUP_OPTIONS.length}
         showDescription={false}
@@ -812,6 +834,7 @@ function OrderModal() {
     <ModalFrame title="Order Issues" subtitle="applies inside each group">
       <select
         focused
+        keyBindings={VIM_SELECT_KEY_BINDINGS}
         width={48}
         height={ORDER_OPTIONS.length}
         showDescription={false}
@@ -826,6 +849,177 @@ function OrderModal() {
         }))}
         onSelect={(_, option) => choose((option?.value as IssueOrderBy | undefined) ?? "none")}
       />
+    </ModalFrame>
+  )
+}
+
+type CommandAction = {
+  name: string
+  description: string
+  run: () => void
+}
+
+const commandViews: { view: View; name: string; description: string }[] = [
+  { view: "my-issues", name: "Go to My Issues", description: "assigned issues" },
+  { view: "work", name: "Go to Current Work", description: "git, PR, and linked issue" },
+  { view: "issues", name: "Go to Issues", description: "workspace issues" },
+  { view: "triage", name: "Go to Triage", description: "triage queue" },
+  { view: "inbox", name: "Go to Inbox", description: "notifications" },
+  { view: "projects", name: "Go to Projects", description: "project list" },
+  { view: "cycles", name: "Go to Cycles", description: "cycle planning" },
+  { view: "git", name: "Go to Git", description: "branches and PRs" },
+  { view: "search", name: "Go to Search", description: "search issues" },
+]
+
+function CommandPaletteModal() {
+  useModalEscape()
+  const {
+    setModal,
+    setView,
+    setSelectedIssueId,
+    setSelectedProjectId,
+    setHelpVisible,
+    requestReload,
+    addToast,
+  } = useStore()
+
+  const chooseView = (view: View) => {
+    setSelectedIssueId(null)
+    setSelectedProjectId(null)
+    setView(view)
+    setModal(null)
+  }
+
+  const [query, setQuery] = useState("")
+  const [index, setIndex] = useState(0)
+  const actions: CommandAction[] = [
+    ...commandViews.map((item) => ({
+      name: item.name,
+      description: item.description,
+      run: () => chooseView(item.view),
+    })),
+    {
+      name: "New Issue",
+      description: "create a top-level Linear issue",
+      run: () => setModal({ type: "new-issue" }),
+    },
+    {
+      name: "Reload Page",
+      description: "refresh cached Linear, git, and GitHub data",
+      run: () => {
+        invalidate()
+        requestReload()
+        setModal(null)
+        addToast("reloading page")
+      },
+    },
+    {
+      name: "Settings",
+      description: "edit keybindings",
+      run: () => setModal({ type: "settings" }),
+    },
+    {
+      name: "Help",
+      description: "show keyboard help",
+      run: () => {
+        setModal(null)
+        setHelpVisible(true)
+      },
+    },
+  ]
+  const needle = query.trim().toLowerCase()
+  const filteredActions = needle
+    ? actions.filter((action) =>
+        `${action.name} ${action.description}`.toLowerCase().includes(needle),
+      )
+    : actions
+
+  useEffect(() => {
+    setIndex((current) => Math.min(current, Math.max(0, filteredActions.length - 1)))
+  }, [filteredActions.length])
+
+  const selectedAction = filteredActions[index]
+
+  useKeyboard((key) => {
+    if (key.name === "escape") return
+    if (filteredActions.length === 0) {
+      if (key.name === "backspace") setQuery((current) => current.slice(0, -1))
+      else if (key.name === "u" && key.ctrl) setQuery("")
+      else {
+        const input = key.sequence ?? key.raw ?? ""
+        if (!key.ctrl && !key.meta && input.length === 1 && input >= " " && input <= "~") {
+          setQuery((current) => current + input)
+        }
+      }
+      return
+    }
+    if (key.name === "down" || isVimNextKey(key)) {
+      setIndex((current) => Math.min(filteredActions.length - 1, current + 1))
+      return
+    }
+    if (key.name === "up" || isVimPreviousKey(key)) {
+      setIndex((current) => Math.max(0, current - 1))
+      return
+    }
+    if (key.name === "backspace") {
+      setQuery((current) => current.slice(0, -1))
+      return
+    }
+    if (key.name === "u" && key.ctrl) {
+      setQuery("")
+      return
+    }
+    if (key.name === "return" || isVimAcceptKey(key)) {
+      selectedAction?.run()
+      return
+    }
+    const input = key.sequence ?? key.raw ?? ""
+    if (!key.ctrl && !key.meta && input.length === 1 && input >= " " && input <= "~") {
+      setQuery((current) => current + input)
+    }
+  })
+  const visibleStart = Math.max(0, Math.min(index - 11, Math.max(0, filteredActions.length - 12)))
+  const visibleActions = filteredActions.slice(visibleStart, visibleStart + 12)
+
+  return (
+    <ModalFrame title="Command Palette" subtitle="type to search · ctrl+n/p choose · ctrl+y run · ctrl+u clear" wide>
+      <box
+        style={{
+          flexDirection: "row",
+          width: "100%",
+          borderStyle: "single",
+          borderColor: theme.borderActive,
+          paddingLeft: 1,
+          paddingRight: 1,
+        }}
+      >
+        <text fg={theme.accent}>: </text>
+        <text fg={query ? theme.fg : theme.fgDim}>{query || "search commands"}</text>
+      </box>
+      <text fg={theme.fgMuted}> </text>
+      {filteredActions.length === 0 ? (
+        <text fg={theme.fgDim}>no commands match</text>
+      ) : (
+        visibleActions.map((action, visibleIndex) => {
+          const actionIndex = visibleStart + visibleIndex
+          const selected = actionIndex === index
+          return (
+            <box
+              key={action.name}
+              style={{
+                flexDirection: "row",
+                backgroundColor: selected ? theme.bgSelected : theme.bgPanel,
+                paddingLeft: 1,
+                paddingRight: 1,
+              }}
+            >
+              <text fg={selected ? theme.accent : theme.fgMuted}>{selected ? "▌" : " "}</text>
+              <text fg={selected ? theme.fg : theme.fgDim}>{action.name.padEnd(24)}</text>
+              <text fg={theme.fgMuted}>{action.description}</text>
+            </box>
+          )
+        })
+      )}
     </ModalFrame>
   )
 }
@@ -858,6 +1052,7 @@ function SettingsModal() {
       {step === "command" ? (
         <select
           focused
+          keyBindings={VIM_SELECT_KEY_BINDINGS}
           width={66}
           height={Math.min(13, KEY_COMMANDS.length)}
           showDescription={false}
@@ -910,6 +1105,7 @@ export function MutationLayer() {
   if (modal.type === "status-filter") return <StatusFilterModal statuses={modal.statuses} />
   if (modal.type === "group") return <GroupModal />
   if (modal.type === "order") return <OrderModal />
+  if (modal.type === "command-palette") return <CommandPaletteModal />
   if (modal.type === "settings") return <SettingsModal />
   return <NewIssueModal parent={modal.parent} />
 }
